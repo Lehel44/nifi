@@ -25,7 +25,6 @@ import java.util.Map;
 import java.util.Vector;
 import java.util.regex.Pattern;
 
-import org.apache.nifi.components.ValidationContext;
 import org.apache.nifi.components.ValidationResult;
 import org.apache.nifi.components.Validator;
 import org.apache.nifi.flowfile.FlowFile;
@@ -50,42 +49,37 @@ import org.snmp4j.util.TreeEvent;
  */
 abstract class SNMPUtils {
 
-    /** logger */
-    private final static Logger logger = LoggerFactory.getLogger(SNMPUtils.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SNMPUtils.class);
 
-    /** OID Pattern */
-    public final static Pattern OID_PATTERN = Pattern.compile("[[0-9]+\\.]*");
+    public static final Pattern OID_PATTERN = Pattern.compile("[[0-9]+\\.]*");
 
-    /** delimiter for properties name */
-    public final static String SNMP_PROP_DELIMITER = "$";
+    // Delimiter for properties name.
+    public static final String SNMP_PROP_DELIMITER = "$";
 
-    /** prefix for SNMP properties in flow file */
-    public final static String SNMP_PROP_PREFIX = "snmp" + SNMP_PROP_DELIMITER;
+    // Prefix for SNMP properties in flow file.
+    public static final String SNMP_PROP_PREFIX = "snmp" + SNMP_PROP_DELIMITER;
 
-    /** list of properties name when performing simple get */
-    private final static List<String> propertyNames = Arrays.asList("snmp$errorIndex", "snmp$errorStatus", "snmp$errorStatusText",
+    // List of properties name when performing simple get.
+    private static final List<String> PROPERTY_NAMES = Arrays.asList("snmp$errorIndex", "snmp$errorStatus", "snmp$errorStatusText",
             "snmp$nonRepeaters", "snmp$requestID", "snmp$type", "snmp$variableBindings");
 
-    /** used to validate OID syntax */
-    public static final Validator SNMP_OID_VALIDATOR = new Validator() {
-        @Override
-        public ValidationResult validate(final String subject, final String input, final ValidationContext context) {
-            final ValidationResult.Builder builder = new ValidationResult.Builder();
-            builder.subject(subject).input(input);
-            if (context.isExpressionLanguageSupported(subject) && context.isExpressionLanguagePresent(input)) {
-                return builder.valid(true).explanation("Contains Expression Language").build();
-            }
-            try {
-                if (OID_PATTERN.matcher(input).matches()) {
-                    builder.valid(true);
-                } else {
-                    builder.valid(false).explanation(input + "is not a valid OID");
-                }
-            } catch (final IllegalArgumentException e) {
-                builder.valid(false).explanation(e.getMessage());
-            }
-            return builder.build();
+    // Used to validate OID syntax.
+    public static final Validator SNMP_OID_VALIDATOR = (subject, input, context) -> {
+        final ValidationResult.Builder builder = new ValidationResult.Builder();
+        builder.subject(subject).input(input);
+        if (context.isExpressionLanguageSupported(subject) && context.isExpressionLanguagePresent(input)) {
+            return builder.valid(true).explanation("Contains Expression Language").build();
         }
+        try {
+            if (OID_PATTERN.matcher(input).matches()) {
+                builder.valid(true);
+            } else {
+                builder.valid(false).explanation(input + "is not a valid OID");
+            }
+        } catch (final IllegalArgumentException e) {
+            builder.valid(false).explanation(e.getMessage());
+        }
+        return builder.build();
     };
 
     /**
@@ -99,7 +93,7 @@ abstract class SNMPUtils {
         if (response != null) {
             try {
                 Method[] methods = PDU.class.getDeclaredMethods();
-                Map<String, String> attributes = new HashMap<String, String>();
+                Map<String, String> attributes = new HashMap<>();
                 for (Method method : methods) {
                     if (Modifier.isPublic(method.getModifiers()) && (method.getParameterTypes().length == 0) && method.getName().startsWith("get")) {
                         String propertyName = extractPropertyNameFromMethod(method);
@@ -117,7 +111,7 @@ abstract class SNMPUtils {
                 }
                 flowFile = processSession.putAllAttributes(flowFile, attributes);
             } catch (Exception e) {
-                logger.warn("Failed to update FlowFile with AMQP attributes", e);
+                LOGGER.warn("Failed to update FlowFile with AMQP attributes", e);
             }
         }
         return flowFile;
@@ -132,7 +126,7 @@ abstract class SNMPUtils {
      * @return updated flow file
      */
     public static FlowFile addAttribute(String key, String value, FlowFile flowFile, ProcessSession processSession) {
-        Map<String, String> attributes = new HashMap<String, String>();
+        Map<String, String> attributes = new HashMap<>();
         attributes.put(key, value);
         flowFile = processSession.putAllAttributes(flowFile, attributes);
         return flowFile;
@@ -146,7 +140,7 @@ abstract class SNMPUtils {
      * @return updated {@link FlowFile}
      */
     public static FlowFile updateFlowFileAttributesWithTreeEventProperties(TreeEvent treeEvent, FlowFile flowFile, ProcessSession processSession) {
-        Map<String, String> attributes = new HashMap<String, String>();
+        Map<String, String> attributes = new HashMap<>();
         addWalkOidValues(attributes, treeEvent.getVariableBindings());
         flowFile = processSession.putAllAttributes(flowFile, attributes);
         return flowFile;
@@ -196,7 +190,7 @@ abstract class SNMPUtils {
      * @return 'true' if valid otherwise 'false'
      */
     public static boolean isValidSnmpPropertyName(String name) {
-        return propertyNames.contains(name);
+        return PROPERTY_NAMES.contains(name);
     }
 
     /**
@@ -205,13 +199,13 @@ abstract class SNMPUtils {
      * @return property name
      */
     private static String extractPropertyNameFromMethod(Method method) {
-        char c[] = method.getName().substring(3).toCharArray();
+        char[] c = method.getName().substring(3).toCharArray();
         c[0] = Character.toLowerCase(c[0]);
         return SNMP_PROP_PREFIX + new String(c);
     }
 
     /**
-     * Method to return the private protocol given the property
+     * Method to return the private protocol given the property.
      * @param privProtocol property
      * @return protocol
      */
@@ -233,7 +227,7 @@ abstract class SNMPUtils {
     }
 
     /**
-     * Method to return the authentication protocol given the property
+     * Method to return the authentication protocol given the property.
      * @param authProtocol property
      * @return protocol
      */
@@ -265,4 +259,7 @@ abstract class SNMPUtils {
         }
     }
 
+    private SNMPUtils() {
+        // hide implicit constructor
+    }
 }
