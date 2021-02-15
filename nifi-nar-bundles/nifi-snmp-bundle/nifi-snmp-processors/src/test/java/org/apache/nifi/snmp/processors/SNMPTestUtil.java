@@ -25,19 +25,11 @@ public class SNMPTestUtil {
      * Will determine an available port.
      */
     public static synchronized int availablePort() {
-        ServerSocket s = null;
-        try {
-            s = new ServerSocket(0);
+        try (ServerSocket s = new ServerSocket(0)) {
             s.setReuseAddress(true);
             return s.getLocalPort();
         } catch (Exception e) {
             throw new IllegalStateException("Failed to discover available port.", e);
-        } finally {
-            try {
-                s.close();
-            } catch (IOException e) {
-                // ignore
-            }
         }
     }
 

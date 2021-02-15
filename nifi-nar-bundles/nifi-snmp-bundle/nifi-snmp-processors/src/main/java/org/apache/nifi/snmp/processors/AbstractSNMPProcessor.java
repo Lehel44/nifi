@@ -17,9 +17,7 @@
 package org.apache.nifi.snmp.processors;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 import org.apache.nifi.annotation.lifecycle.OnStopped;
 import org.apache.nifi.components.PropertyDescriptor;
@@ -47,7 +45,7 @@ import org.snmp4j.smi.UdpAddress;
 import org.snmp4j.transport.DefaultUdpTransportMapping;
 
 /**
- * Base processor that uses SNMP4J client API
+ * Base processor that uses SNMP4J client API.
  * (http://www.snmp4j.org/)
  *
  * @param <T> the type of {@link SNMPWorker}. Please see {@link SNMPSetter}
@@ -55,27 +53,27 @@ import org.snmp4j.transport.DefaultUdpTransportMapping;
  */
 abstract class AbstractSNMPProcessor<T extends SNMPWorker> extends AbstractProcessor {
 
-    /** property to define host of the SNMP agent */
+    // Property to define the host of the SNMP agent.
     public static final PropertyDescriptor HOST = new PropertyDescriptor.Builder()
             .name("snmp-hostname")
-            .displayName("Host Name")
+            .displayName("Hostname")
             .description("Network address of SNMP Agent (e.g., localhost)")
             .required(true)
             .defaultValue("localhost")
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
 
-    /** property to define port of the SNMP agent */
+    // Property to define the port of the SNMP agent.
     public static final PropertyDescriptor PORT = new PropertyDescriptor.Builder()
             .name("snmp-port")
             .displayName("Port")
-            .description("Numeric value identifying Port of SNMP Agent (e.g., 161)")
+            .description("Numeric value identifying the port of SNMP Agent (e.g., 161)")
             .required(true)
             .defaultValue("161")
             .addValidator(StandardValidators.PORT_VALIDATOR)
             .build();
 
-    /** property to define SNMP version to use */
+    // Property to define SNMP version.
     public static final PropertyDescriptor SNMP_VERSION = new PropertyDescriptor.Builder()
             .name("snmp-version")
             .displayName("SNMP Version")
@@ -85,17 +83,19 @@ abstract class AbstractSNMPProcessor<T extends SNMPWorker> extends AbstractProce
             .defaultValue("SNMPv1")
             .build();
 
-    /** property to define SNMP community to use */
+    // Property to define SNMP community.
     public static final PropertyDescriptor SNMP_COMMUNITY = new PropertyDescriptor.Builder()
             .name("snmp-community")
             .displayName("SNMP Community (v1 & v2c)")
-            .description("SNMP Community to use (e.g., public)")
+            .description("SNMP Community to use (e.g., public). The SNMP Community string" +
+                    " is like a user id or password that allows access to a router's or " +
+                    "other device's statistics.")
             .required(false)
             .defaultValue("public")
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
 
-    /** property to define SNMP security level to use */
+    // Property to define SNMP security level.
     public static final PropertyDescriptor SNMP_SECURITY_LEVEL = new PropertyDescriptor.Builder()
             .name("snmp-security-level")
             .displayName("SNMP Security Level")
@@ -105,7 +105,7 @@ abstract class AbstractSNMPProcessor<T extends SNMPWorker> extends AbstractProce
             .defaultValue("authPriv")
             .build();
 
-    /** property to define SNMP security name to use */
+    // Property to define SNMP security name.
     public static final PropertyDescriptor SNMP_SECURITY_NAME = new PropertyDescriptor.Builder()
             .name("snmp-security-name")
             .displayName("SNMP Security name / user name")
@@ -114,7 +114,7 @@ abstract class AbstractSNMPProcessor<T extends SNMPWorker> extends AbstractProce
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
 
-    /** property to define SNMP authentication protocol to use */
+    // Property to define SNMP authentication protocol.
     public static final PropertyDescriptor SNMP_AUTH_PROTOCOL = new PropertyDescriptor.Builder()
             .name("snmp-authentication-protocol")
             .displayName("SNMP Authentication Protocol")
@@ -124,7 +124,7 @@ abstract class AbstractSNMPProcessor<T extends SNMPWorker> extends AbstractProce
             .defaultValue("")
             .build();
 
-    /** property to define SNMP authentication password to use */
+    // Property to define SNMP authentication password.
     public static final PropertyDescriptor SNMP_AUTH_PASSWORD = new PropertyDescriptor.Builder()
             .name("snmp-authentication-passphrase")
             .displayName("SNMP Authentication pass phrase")
@@ -134,8 +134,8 @@ abstract class AbstractSNMPProcessor<T extends SNMPWorker> extends AbstractProce
             .sensitive(true)
             .build();
 
-    /** property to define SNMP private protocol to use */
-    public static final PropertyDescriptor SNMP_PRIV_PROTOCOL = new PropertyDescriptor.Builder()
+    // Property to define SNMP private protocol.
+    public static final PropertyDescriptor SNMP_PRIVATE_PROTOCOL = new PropertyDescriptor.Builder()
             .name("snmp-private-protocol")
             .displayName("SNMP Private Protocol")
             .description("SNMP Private Protocol to use")
@@ -144,8 +144,8 @@ abstract class AbstractSNMPProcessor<T extends SNMPWorker> extends AbstractProce
             .defaultValue("")
             .build();
 
-    /** property to define SNMP private password to use */
-    public static final PropertyDescriptor SNMP_PRIV_PASSWORD = new PropertyDescriptor.Builder()
+    // Property to define SNMP private password.
+    public static final PropertyDescriptor SNMP_PRIVATE_PASSWORD = new PropertyDescriptor.Builder()
             .name("snmp-private-protocol-passphrase")
             .displayName("SNMP Private protocol pass phrase")
             .description("Pass phrase used for SNMP private protocol")
@@ -154,7 +154,7 @@ abstract class AbstractSNMPProcessor<T extends SNMPWorker> extends AbstractProce
             .sensitive(true)
             .build();
 
-    /** property to define the number of SNMP retries when requesting the SNMP Agent */
+    // Property to define the number of SNMP retries when requesting the SNMP Agent.
     public static final PropertyDescriptor SNMP_RETRIES = new PropertyDescriptor.Builder()
             .name("snmp-retries")
             .displayName("Number of retries")
@@ -164,7 +164,7 @@ abstract class AbstractSNMPProcessor<T extends SNMPWorker> extends AbstractProce
             .addValidator(StandardValidators.INTEGER_VALIDATOR)
             .build();
 
-    /** property to define the timeout when requesting the SNMP Agent */
+    // Property to define the timeout when requesting the SNMP Agent.
     public static final PropertyDescriptor SNMP_TIMEOUT = new PropertyDescriptor.Builder()
             .name("snmp-timeout")
             .displayName("Timeout (ms)")
@@ -174,70 +174,58 @@ abstract class AbstractSNMPProcessor<T extends SNMPWorker> extends AbstractProce
             .addValidator(StandardValidators.INTEGER_VALIDATOR)
             .build();
 
-    /** list of property descriptors */
     static List<PropertyDescriptor> descriptors = new ArrayList<>();
 
-    /*
-     * Will ensure that list of PropertyDescriptors is build only once, since
-     * all other life cycle methods are invoked multiple times.
-     */
-    static {
-        descriptors.add(HOST);
-        descriptors.add(PORT);
-        descriptors.add(SNMP_VERSION);
-        descriptors.add(SNMP_COMMUNITY);
-        descriptors.add(SNMP_SECURITY_LEVEL);
-        descriptors.add(SNMP_SECURITY_NAME);
-        descriptors.add(SNMP_AUTH_PROTOCOL);
-        descriptors.add(SNMP_AUTH_PASSWORD);
-        descriptors.add(SNMP_PRIV_PROTOCOL);
-        descriptors.add(SNMP_PRIV_PASSWORD);
-        descriptors.add(SNMP_RETRIES);
-        descriptors.add(SNMP_TIMEOUT);
-    }
+    protected static final List<PropertyDescriptor> BASIC_PROPERTIES = Collections.unmodifiableList(Arrays.asList(
+            HOST,
+            PORT,
+            SNMP_VERSION,
+            SNMP_COMMUNITY,
+            SNMP_SECURITY_LEVEL,
+            SNMP_SECURITY_NAME,
+            SNMP_AUTH_PROTOCOL,
+            SNMP_AUTH_PASSWORD,
+            SNMP_PRIVATE_PROTOCOL,
+            SNMP_PRIVATE_PASSWORD,
+            SNMP_RETRIES,
+            SNMP_TIMEOUT
+    ));
 
-    /** SNMP target */
     protected volatile AbstractTarget snmpTarget;
-
-    /** transport mapping */
     protected volatile TransportMapping transportMapping;
-
-    /** SNMP */
     protected volatile Snmp snmp;
-
-    /** target resource */
     protected volatile T targetResource;
 
     /**
-     * Will builds target resource upon first invocation and will delegate to the
+     * Builds target resource upon first invocation and delegates to the
      * implementation of {@link #onTriggerSnmp(ProcessContext, ProcessSession)} method for
      * further processing.
      */
     @Override
     public void onTrigger(ProcessContext context, ProcessSession session) throws ProcessException {
         synchronized (this) {
-            this.buildTargetResource(context);
+            buildTargetResource(context);
         }
-        this.onTriggerSnmp(context, session);
+        onTriggerSnmp(context, session);
     }
 
     /**
-     * Will close current SNMP mapping.
+     * Closes the current SNMP mapping.
      */
     @OnStopped
     public void close() {
         try {
-            if (this.targetResource != null) {
-                this.targetResource.close();
+            if (targetResource != null) {
+                targetResource.close();
             }
         } catch (Exception e) {
-            this.getLogger().warn("Failure while closing target resource " + this.targetResource, e);
+            getLogger().warn("Failure while closing target resource " + targetResource, e);
         }
-        this.targetResource = null;
+        targetResource = null;
 
         try {
-            if (this.transportMapping != null) {
-                this.transportMapping.close();
+            if (transportMapping != null) {
+                transportMapping.close();
             }
         } catch (IOException e) {
             this.getLogger().warn("Failure while closing UDP transport mapping", e);
@@ -263,9 +251,9 @@ abstract class AbstractSNMPProcessor<T extends SNMPWorker> extends AbstractProce
 
         final boolean isVersion3 = "SNMPv3".equals(validationContext.getProperty(SNMP_VERSION).getValue());
 
-        if(isVersion3) {
+        if (isVersion3) {
             final boolean isSecurityNameSet = validationContext.getProperty(SNMP_SECURITY_NAME).isSet();
-            if(!isSecurityNameSet) {
+            if (!isSecurityNameSet) {
                 problems.add(new ValidationResult.Builder()
                         .input("SNMP Security Name")
                         .valid(false)
@@ -273,37 +261,37 @@ abstract class AbstractSNMPProcessor<T extends SNMPWorker> extends AbstractProce
                         .build());
             }
 
-            final boolean isAuthProtOK = !"".equals(validationContext.getProperty(SNMP_AUTH_PROTOCOL).getValue());
-            final boolean isAuthPwdSet = validationContext.getProperty(SNMP_AUTH_PASSWORD).isSet();
-            final boolean isPrivProtOK = !"".equals(validationContext.getProperty(SNMP_PRIV_PROTOCOL).getValue());
-            final boolean isPrivPwdSet = validationContext.getProperty(SNMP_PRIV_PASSWORD).isSet();
+            final boolean isAuthProtocolValid = !"".equals(validationContext.getProperty(SNMP_AUTH_PROTOCOL).getValue());
+            final boolean isAuthPasswordSet = validationContext.getProperty(SNMP_AUTH_PASSWORD).isSet();
+            final boolean isPrivateProtocolValid = !"".equals(validationContext.getProperty(SNMP_PRIVATE_PROTOCOL).getValue());
+            final boolean isPrivatePasswordSet = validationContext.getProperty(SNMP_PRIVATE_PASSWORD).isSet();
 
-            switch(validationContext.getProperty(SNMP_SECURITY_LEVEL).getValue()) {
-            case "authNoPriv":
-                if(!isAuthProtOK || !isAuthPwdSet) {
-                    problems.add(new ValidationResult.Builder()
-                            .input("SNMP Security Level")
-                            .valid(false)
-                            .explanation("Authentication protocol and password must be set when using authNoPriv security level.")
-                            .build());
-                }
-                break;
-            case "authPriv":
-                if(!isAuthProtOK || !isAuthPwdSet || !isPrivProtOK || !isPrivPwdSet) {
-                    problems.add(new ValidationResult.Builder()
-                            .input("SNMP Security Level")
-                            .valid(false)
-                            .explanation("All protocols and passwords must be set when using authPriv security level.")
-                            .build());
-                }
-                break;
-            case "noAuthNoPriv":
-            default:
-                break;
+            switch (validationContext.getProperty(SNMP_SECURITY_LEVEL).getValue()) {
+                case "authNoPriv":
+                    if (!isAuthProtocolValid || !isAuthPasswordSet) {
+                        problems.add(new ValidationResult.Builder()
+                                .input("SNMP Security Level")
+                                .valid(false)
+                                .explanation("Authentication protocol and password must be set when using authNoPriv security level.")
+                                .build());
+                    }
+                    break;
+                case "authPriv":
+                    if (!isAuthProtocolValid || !isAuthPasswordSet || !isPrivateProtocolValid || !isPrivatePasswordSet) {
+                        problems.add(new ValidationResult.Builder()
+                                .input("SNMP Security Level")
+                                .valid(false)
+                                .explanation("All protocols and passwords must be set when using authPriv security level.")
+                                .build());
+                    }
+                    break;
+                case "noAuthNoPriv":
+                default:
+                    break;
             }
         } else {
             final boolean isCommunitySet = validationContext.getProperty(SNMP_COMMUNITY).isSet();
-            if(!isCommunitySet) {
+            if (!isCommunitySet) {
                 problems.add(new ValidationResult.Builder()
                         .input("SNMP Community")
                         .valid(false)
@@ -320,10 +308,8 @@ abstract class AbstractSNMPProcessor<T extends SNMPWorker> extends AbstractProce
      * {@link #onTrigger(ProcessContext, ProcessSession)}. It is implemented by
      * sub-classes to perform {@link Processor} specific functionality.
      *
-     * @param context
-     *            instance of {@link ProcessContext}
-     * @param session
-     *            instance of {@link ProcessSession}
+     * @param context instance of {@link ProcessContext}
+     * @param session instance of {@link ProcessSession}
      * @throws ProcessException Process exception
      */
     protected abstract void onTriggerSnmp(ProcessContext context, ProcessSession session) throws ProcessException;
@@ -333,28 +319,27 @@ abstract class AbstractSNMPProcessor<T extends SNMPWorker> extends AbstractProce
      * {@link SNMPSetter} or {@link SNMPGetter}) and is implemented by
      * sub-classes.
      *
-     * @param context
-     *            instance of {@link ProcessContext}
+     * @param context instance of {@link ProcessContext}
      * @return new instance of {@link SNMPWorker}
      */
     protected abstract T finishBuildingTargetResource(ProcessContext context);
 
     /**
      * Builds target resource.
+     *
      * @param context Process context
      */
     private void buildTargetResource(ProcessContext context) {
-        if((this.transportMapping == null) || !this.transportMapping.isListening() || (this.snmp == null)) {
+        if ((transportMapping == null) || !transportMapping.isListening() || snmp == null) {
             try {
-                this.transportMapping = new DefaultUdpTransportMapping();
-                this.snmp = new Snmp(this.transportMapping);
+                transportMapping = new DefaultUdpTransportMapping();
+                snmp = new Snmp(transportMapping);
 
-                if("SNMPv3".equals(context.getProperty(SNMP_VERSION).getValue())) {
+                if ("SNMPv3".equals(context.getProperty(SNMP_VERSION).getValue())) {
                     USM usm = new USM(SecurityProtocols.getInstance(), new OctetString(MPv3.createLocalEngineID()), 0);
                     SecurityModels.getInstance().addSecurityModel(usm);
                 }
-
-                this.transportMapping.listen();
+                transportMapping.listen();
             } catch (Exception e) {
                 throw new IllegalStateException("Failed to initialize UDP transport mapping", e);
             }
@@ -369,6 +354,7 @@ abstract class AbstractSNMPProcessor<T extends SNMPWorker> extends AbstractProce
 
     /**
      * Creates {@link AbstractTarget} to request SNMP agent.
+     *
      * @param context Process context
      * @return the SNMP target
      */
@@ -377,42 +363,43 @@ abstract class AbstractSNMPProcessor<T extends SNMPWorker> extends AbstractProce
         String snmpVersion = context.getProperty(SNMP_VERSION).getValue();
         int version = 0;
         switch (snmpVersion) {
-        case "SNMPv2c":
-            version = SnmpConstants.version2c;
-            break;
-        case "SNMPv3":
-            version = SnmpConstants.version3;
-            break;
-        case "SNMPv1":
-        default:
-            version = SnmpConstants.version1;
-            break;
+            case "SNMPv2c":
+                version = SnmpConstants.version2c;
+                break;
+            case "SNMPv3":
+                version = SnmpConstants.version3;
+                break;
+            case "SNMPv1":
+                version = SnmpConstants.version1;
+                break;
+            default:
+                break;
         }
 
-        if(version == SnmpConstants.version3) {
+        if (version == SnmpConstants.version3) {
             final String username = context.getProperty(SNMP_SECURITY_NAME).getValue();
             final String authPassword = context.getProperty(SNMP_AUTH_PASSWORD).getValue();
-            final String privPassword = context.getProperty(SNMP_PRIV_PASSWORD).getValue();
+            final String privatePassword = context.getProperty(SNMP_PRIVATE_PASSWORD).getValue();
             final String authProtocol = context.getProperty(SNMP_AUTH_PROTOCOL).getValue();
-            final String privProtocol = context.getProperty(SNMP_PRIV_PROTOCOL).getValue();
+            final String privateProtocol = context.getProperty(SNMP_PRIVATE_PROTOCOL).getValue();
             OctetString aPwd = authPassword != null ? new OctetString(authPassword) : null;
-            OctetString pPwd = privPassword != null ? new OctetString(privPassword) : null;
+            OctetString pPwd = privatePassword != null ? new OctetString(privatePassword) : null;
 
-            // add user information
-            this.snmp.getUSM().addUser(new OctetString(username),
-                    new UsmUser(new OctetString(username), SNMPUtils.getAuth(authProtocol), aPwd, SNMPUtils.getPriv(privProtocol), pPwd));
+            // Add user information.
+            snmp.getUSM().addUser(new OctetString(username), new UsmUser(new OctetString(username),
+                    SNMPUtils.getAuth(authProtocol), aPwd, SNMPUtils.getPriv(privateProtocol), pPwd));
 
             result = new UserTarget();
 
             ((UserTarget) result).setSecurityLevel(SNMPUtils.getSecLevel(context.getProperty(SNMP_SECURITY_LEVEL).getValue()));
             final String securityName = context.getProperty(SNMP_SECURITY_NAME).getValue();
-            if(securityName != null) {
+            if (securityName != null) {
                 ((UserTarget) result).setSecurityName(new OctetString(securityName));
             }
         } else {
             result = new CommunityTarget();
             String community = context.getProperty(SNMP_COMMUNITY).getValue();
-            if(community != null) {
+            if (community != null) {
                 ((CommunityTarget) result).setCommunity(new OctetString(community));
             }
         }

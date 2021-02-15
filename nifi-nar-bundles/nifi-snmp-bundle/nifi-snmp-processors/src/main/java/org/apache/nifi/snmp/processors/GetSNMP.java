@@ -16,11 +16,7 @@
  */
 package org.apache.nifi.snmp.processors;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import org.apache.nifi.annotation.behavior.InputRequirement;
 import org.apache.nifi.annotation.behavior.InputRequirement.Requirement;
@@ -47,27 +43,27 @@ import org.snmp4j.util.TreeEvent;
  * {@link FlowFile} containing in its properties the information retrieved.
  * The output {@link FlowFile} won't have any content.
  */
-@Tags({ "snmp", "get", "oid", "walk" })
+@Tags({"snmp", "get", "oid", "walk"})
 @InputRequirement(Requirement.INPUT_FORBIDDEN)
 @CapabilityDescription("Retrieves information from SNMP Agent and outputs a FlowFile with information in attributes and without any content")
 @WritesAttributes({
-    @WritesAttribute(attribute=SNMPUtils.SNMP_PROP_PREFIX + "*", description="Attributes retrieved from the SNMP response. It may include:"
-            + " snmp$errorIndex, snmp$errorStatus, snmp$errorStatusText, snmp$nonRepeaters, snmp$requestID, snmp$type, snmp$variableBindings"),
-    @WritesAttribute(attribute=SNMPUtils.SNMP_PROP_PREFIX + "textualOid", description="This attribute will exist if and only if the strategy"
-            + " is GET and will be equal to the value given in Textual Oid property.")
+        @WritesAttribute(attribute = SNMPUtils.SNMP_PROP_PREFIX + "*", description = "Attributes retrieved from the SNMP response. It may include:"
+                + " snmp$errorIndex, snmp$errorStatus, snmp$errorStatusText, snmp$nonRepeaters, snmp$requestID, snmp$type, snmp$variableBindings"),
+        @WritesAttribute(attribute = SNMPUtils.SNMP_PROP_PREFIX + "textualOid", description = "This attribute will exist if and only if the strategy"
+                + " is GET and will be equal to the value given in Textual Oid property.")
 })
 public class GetSNMP extends AbstractSNMPProcessor<SNMPGetter> {
 
-    /** OID to request (if walk, it is the root ID of the request) */
+    // OID to request (if walk, it is the root ID of the request).
     public static final PropertyDescriptor OID = new PropertyDescriptor.Builder()
             .name("snmp-oid")
             .displayName("OID")
             .description("The OID to request")
             .required(true)
-            .addValidator(SNMPUtils.SNMP_OID_VALIDATOR)
+            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
 
-    /** Textual OID to request */
+    // Textual OID to request.
     public static final PropertyDescriptor TEXTUAL_OID = new PropertyDescriptor.Builder()
             .name("snmp-textual-oid")
             .displayName("Textual OID")
@@ -77,7 +73,7 @@ public class GetSNMP extends AbstractSNMPProcessor<SNMPGetter> {
             .defaultValue(null)
             .build();
 
-    /** SNMP strategy for SNMP Get processor : simple get or walk */
+    // SNMP strategy for SNMP Get processor: GET or WALK.
     public static final PropertyDescriptor SNMP_STRATEGY = new PropertyDescriptor.Builder()
             .name("snmp-strategy")
             .displayName("SNMP strategy (GET/WALK)")
@@ -87,58 +83,37 @@ public class GetSNMP extends AbstractSNMPProcessor<SNMPGetter> {
             .defaultValue("GET")
             .build();
 
-    /** relationship for success */
     public static final Relationship REL_SUCCESS = new Relationship.Builder()
             .name("success")
             .description("All FlowFiles that are received from the SNMP agent are routed to this relationship")
             .build();
 
-    /** relationship for failure */
     public static final Relationship REL_FAILURE = new Relationship.Builder()
             .name("failure")
             .description("All FlowFiles that cannot received from the SNMP agent are routed to this relationship")
             .build();
 
-    /** list of property descriptors */
-    private final static List<PropertyDescriptor> propertyDescriptors;
+    private static final List<PropertyDescriptor> PROPERTY_DESCRIPTORS = createPropertyList();
 
-    /** list of relationships */
-    private final static Set<Relationship> relationships;
-
-    /*
-     * Will ensure that the list of property descriptors is build only once.
-     * Will also create a Set of relationships
-     */
-    static {
-        List<PropertyDescriptor> _propertyDescriptors = new ArrayList<>();
-        _propertyDescriptors.add(OID);
-        _propertyDescriptors.add(TEXTUAL_OID);
-        _propertyDescriptors.add(SNMP_STRATEGY);
-        _propertyDescriptors.addAll(descriptors);
-        propertyDescriptors = Collections.unmodifiableList(_propertyDescriptors);
-
-        Set<Relationship> _relationships = new HashSet<>();
-        _relationships.add(REL_SUCCESS);
-        _relationships.add(REL_FAILURE);
-        relationships = Collections.unmodifiableSet(_relationships);
-    }
+    private static final Set<Relationship> RELATIONSHIPS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+            REL_SUCCESS,
+            REL_FAILURE
+    )));
 
     /**
      * Delegate method to supplement
      * {@link #onTrigger(ProcessContext, ProcessSession)}. It is implemented by
      * sub-classes to perform {@link Processor} specific functionality.
      *
-     * @param context
-     *            instance of {@link ProcessContext}
-     * @param processSession
-     *            instance of {@link ProcessSession}
+     * @param context        instance of {@link ProcessContext}
+     * @param processSession instance of {@link ProcessSession}
      * @throws ProcessException Process exception
      */
     @Override
     protected void onTriggerSnmp(ProcessContext context, ProcessSession processSession) throws ProcessException {
-        if("GET".equals(context.getProperty(SNMP_STRATEGY).getValue())) {
+        if ("GET".equals(context.getProperty(SNMP_STRATEGY).getValue())) {
             final ResponseEvent response = this.targetResource.get();
-            if (response.getResponse() != null){
+            if (response.getResponse() != null) {
                 FlowFile flowFile = processSession.create();
                 PDU pdu = response.getResponse();
                 flowFile = SNMPUtils.updateFlowFileAttributesWithPduProperties(pdu, flowFile, processSession);
@@ -146,7 +121,7 @@ public class GetSNMP extends AbstractSNMPProcessor<SNMPGetter> {
                         context.getProperty(TEXTUAL_OID).getValue(), flowFile, processSession);
                 processSession.getProvenanceReporter().receive(flowFile,
                         this.snmpTarget.getAddress().toString() + "/" + context.getProperty(OID).getValue());
-                if(pdu.getErrorStatus() == PDU.noError) {
+                if (pdu.getErrorStatus() == PDU.noError) {
                     processSession.transfer(flowFile, REL_SUCCESS);
                 } else {
                     processSession.transfer(flowFile, REL_FAILURE);
@@ -155,9 +130,9 @@ public class GetSNMP extends AbstractSNMPProcessor<SNMPGetter> {
                 this.getLogger().error("Get request timed out or parameters are incorrect.");
                 context.yield();
             }
-        } else if("WALK".equals(context.getProperty(SNMP_STRATEGY).getValue())) {
+        } else if ("WALK".equals(context.getProperty(SNMP_STRATEGY).getValue())) {
             final List<TreeEvent> events = this.targetResource.walk();
-            if((events != null) && !events.isEmpty() && (events.get(0).getVariableBindings() != null)) {
+            if ((events != null) && !events.isEmpty() && (events.get(0).getVariableBindings() != null)) {
                 FlowFile flowFile = processSession.create();
                 for (TreeEvent treeEvent : events) {
                     flowFile = SNMPUtils.updateFlowFileAttributesWithTreeEventProperties(treeEvent, flowFile, processSession);
@@ -181,19 +156,20 @@ public class GetSNMP extends AbstractSNMPProcessor<SNMPGetter> {
         return new SNMPGetter(this.snmp, this.snmpTarget, new OID(oid));
     }
 
-    /**
-     * get list of supported property descriptors
-     */
     @Override
     protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
-        return propertyDescriptors;
+        return PROPERTY_DESCRIPTORS;
     }
 
-    /**
-     * get list of relationships
-     */
     @Override
     public Set<Relationship> getRelationships() {
-        return relationships;
+        return RELATIONSHIPS;
+    }
+
+    // Creates a list of the base class' and the current properties.
+    private static List<PropertyDescriptor> createPropertyList() {
+        List<PropertyDescriptor> propertyDescriptors = Arrays.asList(OID, TEXTUAL_OID, SNMP_STRATEGY);
+        propertyDescriptors.addAll(BASIC_PROPERTIES);
+        return propertyDescriptors;
     }
 }

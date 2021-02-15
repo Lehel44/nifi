@@ -35,59 +35,58 @@ import org.snmp4j.util.TreeEvent;
 import org.snmp4j.util.TreeUtils;
 
 /**
- * Extension of {@link SNMPWorker} to perform SNMP Get and SNMP Walk requests
+ * Extension of {@link SNMPWorker} to perform SNMP Get and SNMP Walk requests.
  */
 final class SNMPGetter extends SNMPWorker {
 
-    /** logger */
-    private final static Logger logger = LoggerFactory.getLogger(SNMPGetter.class);
-
-    /** OID to request */
+    private static final Logger LOGGER = LoggerFactory.getLogger(SNMPGetter.class);
     private final OID oid;
 
     /**
-     * Creates an instance of this getter
-     * @param snmp instance of {@link Snmp}
+     * Creates an instance of this getter.
+     *
+     * @param snmp   instance of {@link Snmp}
      * @param target instance of {@link AbstractTarget} to request
-     * @param oid instance of {@link OID} to request
+     * @param oid    instance of {@link OID} to request
      */
     SNMPGetter(Snmp snmp, AbstractTarget target, OID oid) {
         super(snmp, target);
         this.oid = oid;
-        logger.info("Successfully initialized SNMP Getter");
+        LOGGER.info("Successfully initialized SNMP Getter");
     }
 
     /**
      * Construct the PDU to perform the SNMP Get request and returns
      * the result in order to create the flow file.
+     *
      * @return {@link ResponseEvent}
      */
     public ResponseEvent get() {
         try {
-            PDU pdu = null;
-            if(this.target.getVersion() == SnmpConstants.version3) {
+            PDU pdu;
+            if (target.getVersion() == SnmpConstants.version3) {
                 pdu = new ScopedPDU();
             } else {
                 pdu = new PDU();
             }
-            pdu.add(new VariableBinding(this.oid));
+            pdu.add(new VariableBinding(oid));
             pdu.setType(PDU.GET);
-            return this.snmp.get(pdu, this.target);
+            return snmp.get(pdu, target);
         } catch (IOException e) {
-            logger.error("Failed to get information from SNMP agent; " + this, e);
+            LOGGER.error("Failed to get information from SNMP agent; {}", this, e);
             throw new ProcessException(e);
         }
     }
 
     /**
      * Perform a SNMP walk and returns the list of {@link TreeEvent}
+     *
      * @return the list of {@link TreeEvent}
      */
+    @SuppressWarnings("unchecked")
     public List<TreeEvent> walk() {
-        TreeUtils treeUtils = new TreeUtils(this.snmp, new DefaultPDUFactory());
-        @SuppressWarnings("unchecked")
-        List<TreeEvent> events = treeUtils.getSubtree(this.target, this.oid);
-        return events;
+        TreeUtils treeUtils = new TreeUtils(snmp, new DefaultPDUFactory());
+        return treeUtils.getSubtree(target, oid);
     }
 
     /**
