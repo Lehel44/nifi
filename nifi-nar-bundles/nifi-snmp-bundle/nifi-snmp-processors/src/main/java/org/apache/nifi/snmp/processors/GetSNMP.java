@@ -110,9 +110,9 @@ public class GetSNMP extends AbstractSNMPProcessor<SNMPGetter> {
      * @throws ProcessException Process exception
      */
     @Override
-    protected void onTriggerSnmp(ProcessContext context, ProcessSession processSession) throws ProcessException {
+    protected void onTriggerSnmp(ProcessContext context, ProcessSession processSession) {
         if ("GET".equals(context.getProperty(SNMP_STRATEGY).getValue())) {
-            final ResponseEvent response = this.targetResource.get();
+            final ResponseEvent response = targetResource.get();
             if (response.getResponse() != null) {
                 FlowFile flowFile = processSession.create();
                 PDU pdu = response.getResponse();
@@ -168,8 +168,9 @@ public class GetSNMP extends AbstractSNMPProcessor<SNMPGetter> {
 
     // Creates a list of the base class' and the current properties.
     private static List<PropertyDescriptor> createPropertyList() {
-        List<PropertyDescriptor> propertyDescriptors = Arrays.asList(OID, TEXTUAL_OID, SNMP_STRATEGY);
+        List<PropertyDescriptor> propertyDescriptors = new ArrayList<>();
         propertyDescriptors.addAll(BASIC_PROPERTIES);
-        return propertyDescriptors;
+        propertyDescriptors.addAll(Arrays.asList(OID, TEXTUAL_OID, SNMP_STRATEGY));
+        return Collections.unmodifiableList(propertyDescriptors);
     }
 }
