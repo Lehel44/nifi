@@ -35,11 +35,11 @@ import org.snmp4j.util.TreeEvent;
 import org.snmp4j.util.TreeUtils;
 
 /**
- * Extension of {@link SNMPWorker} to perform SNMP Get and SNMP Walk requests.
+ * Extension of {@link SnmpWorker} to perform SNMP Get and SNMP Walk requests.
  */
-final class SNMPGetter extends SNMPWorker {
+final class SnmpGetter extends SnmpWorker {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SNMPGetter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SnmpGetter.class);
     private final OID oid;
 
     /**
@@ -49,7 +49,7 @@ final class SNMPGetter extends SNMPWorker {
      * @param target instance of {@link AbstractTarget} to request
      * @param oid    instance of {@link OID} to request
      */
-    SNMPGetter(Snmp snmp, AbstractTarget target, OID oid) {
+    SnmpGetter(Snmp snmp, AbstractTarget target, OID oid) {
         super(snmp, target);
         this.oid = oid;
         LOGGER.info("Successfully initialized SNMP Getter");
@@ -90,7 +90,7 @@ final class SNMPGetter extends SNMPWorker {
     }
 
     /**
-     * @see org.apache.nifi.snmp.processors.SNMPWorker#toString()
+     * @see SnmpWorker#toString()
      */
     @Override
     public String toString() {

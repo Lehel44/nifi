@@ -47,12 +47,12 @@ import org.snmp4j.util.TreeEvent;
 @InputRequirement(Requirement.INPUT_FORBIDDEN)
 @CapabilityDescription("Retrieves information from SNMP Agent and outputs a FlowFile with information in attributes and without any content")
 @WritesAttributes({
-        @WritesAttribute(attribute = SNMPUtils.SNMP_PROP_PREFIX + "*", description = "Attributes retrieved from the SNMP response. It may include:"
+        @WritesAttribute(attribute = SnmpUtils.SNMP_PROP_PREFIX + "*", description = "Attributes retrieved from the SNMP response. It may include:"
                 + " snmp$errorIndex, snmp$errorStatus, snmp$errorStatusText, snmp$nonRepeaters, snmp$requestID, snmp$type, snmp$variableBindings"),
-        @WritesAttribute(attribute = SNMPUtils.SNMP_PROP_PREFIX + "textualOid", description = "This attribute will exist if and only if the strategy"
+        @WritesAttribute(attribute = SnmpUtils.SNMP_PROP_PREFIX + "textualOid", description = "This attribute will exist if and only if the strategy"
                 + " is GET and will be equal to the value given in Textual Oid property.")
 })
-public class GetSNMP extends AbstractSNMPProcessor<SNMPGetter> {
+public class GetSnmp extends AbstractSnmpProcessor<SnmpGetter> {
 
     // OID to request (if walk, it is the root ID of the request).
     public static final PropertyDescriptor OID = new PropertyDescriptor.Builder()
@@ -116,44 +116,44 @@ public class GetSNMP extends AbstractSNMPProcessor<SNMPGetter> {
             if (response.getResponse() != null) {
                 FlowFile flowFile = processSession.create();
                 PDU pdu = response.getResponse();
-                flowFile = SNMPUtils.updateFlowFileAttributesWithPduProperties(pdu, flowFile, processSession);
-                flowFile = SNMPUtils.addAttribute(SNMPUtils.SNMP_PROP_PREFIX + "textualOid",
+                flowFile = SnmpUtils.updateFlowFileAttributesWithPduProperties(pdu, flowFile, processSession);
+                flowFile = SnmpUtils.addAttribute(SnmpUtils.SNMP_PROP_PREFIX + "textualOid",
                         context.getProperty(TEXTUAL_OID).getValue(), flowFile, processSession);
                 processSession.getProvenanceReporter().receive(flowFile,
-                        this.snmpTarget.getAddress().toString() + "/" + context.getProperty(OID).getValue());
+                        snmpTarget.getAddress().toString() + "/" + context.getProperty(OID).getValue());
                 if (pdu.getErrorStatus() == PDU.noError) {
                     processSession.transfer(flowFile, REL_SUCCESS);
                 } else {
                     processSession.transfer(flowFile, REL_FAILURE);
                 }
             } else {
-                this.getLogger().error("Get request timed out or parameters are incorrect.");
+                getLogger().error("Get request timed out or parameters are incorrect.");
                 context.yield();
             }
         } else if ("WALK".equals(context.getProperty(SNMP_STRATEGY).getValue())) {
-            final List<TreeEvent> events = this.targetResource.walk();
+            final List<TreeEvent> events = targetResource.walk();
             if ((events != null) && !events.isEmpty() && (events.get(0).getVariableBindings() != null)) {
                 FlowFile flowFile = processSession.create();
                 for (TreeEvent treeEvent : events) {
-                    flowFile = SNMPUtils.updateFlowFileAttributesWithTreeEventProperties(treeEvent, flowFile, processSession);
+                    flowFile = SnmpUtils.updateFlowFileAttributesWithTreeEventProperties(treeEvent, flowFile, processSession);
                 }
                 processSession.getProvenanceReporter().receive(flowFile,
-                        this.snmpTarget.getAddress().toString() + "/" + context.getProperty(OID).getValue());
+                        snmpTarget.getAddress().toString() + "/" + context.getProperty(OID).getValue());
                 processSession.transfer(flowFile, REL_SUCCESS);
             } else {
-                this.getLogger().error("Get request timed out or parameters are incorrect.");
+                getLogger().error("Get request timed out or parameters are incorrect.");
                 context.yield();
             }
         }
     }
 
     /**
-     * Will create an instance of {@link SNMPGetter}
+     * Will create an instance of {@link SnmpGetter}
      */
     @Override
-    protected SNMPGetter finishBuildingTargetResource(ProcessContext context) {
+    protected SnmpGetter finishBuildingTargetResource(ProcessContext context) {
         String oid = context.getProperty(OID).getValue();
-        return new SNMPGetter(this.snmp, this.snmpTarget, new OID(oid));
+        return new SnmpGetter(snmpContext.getSnmp(), snmpTarget, new OID(oid));
     }
 
     @Override

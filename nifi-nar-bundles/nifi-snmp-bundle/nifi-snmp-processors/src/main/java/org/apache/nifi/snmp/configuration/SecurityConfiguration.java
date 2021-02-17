@@ -1,75 +1,65 @@
 package org.apache.nifi.snmp.configuration;
 
-import org.apache.nifi.components.PropertyDescriptor;
-import org.apache.nifi.components.ValidationContext;
-import org.apache.nifi.util.StringUtils;
-
 public class SecurityConfiguration {
 
     private static final String SNMP_V3 = "SNMPv3";
 
-    private final boolean isVersion3;
-    private final boolean isAuthProtocolValid;
-    private final boolean isAuthPasswordSet;
-    private final boolean isPrivateProtocolValid;
-    private final boolean isPrivatePasswordSet;
-    private final boolean isSecurityNameSet;
-    private final SecurityLevel securityLevel;
-    private final boolean isCommunityStringSet;
+    private final String version;
+    private final String authProtocol;
+    private final String authPassword;
+    private final String privacyProtocol;
+    private final String privacyPassword;
+    private final String securityName;
+    private final String securityLevel;
+    private final String communityString;
 
-    public SecurityConfiguration(final ValidationContext validationContext,
-                                 final PropertyDescriptor snmpVersion,
-                                 final PropertyDescriptor snmpSecurityName,
-                                 final PropertyDescriptor snmpAuthProtocol,
-                                 final PropertyDescriptor snmpAuthPassword,
-                                 final PropertyDescriptor snmpPrivateProtocol,
-                                 final PropertyDescriptor snmpPrivatePassword,
-                                 final PropertyDescriptor snmpSecurityLevel,
-                                 final PropertyDescriptor snmpCommunityString) {
-
-        this.isVersion3 = SNMP_V3.equals(validationContext.getProperty(snmpVersion).getValue());
-        this.isSecurityNameSet = validationContext.getProperty(snmpSecurityName).isSet();
-        this.isAuthProtocolValid = !StringUtils.EMPTY.equals(validationContext.getProperty(snmpAuthProtocol).getValue());
-        this.isAuthPasswordSet = validationContext.getProperty(snmpAuthPassword).isSet();
-        this.isPrivateProtocolValid = !StringUtils.EMPTY.equals(validationContext.getProperty(snmpPrivateProtocol).getValue());
-        this.isPrivatePasswordSet = validationContext.getProperty(snmpPrivatePassword).isSet();
-        this.securityLevel = SecurityLevel.valueOf(validationContext.getProperty(snmpSecurityLevel).getValue());
-        this.isCommunityStringSet = validationContext.getProperty(snmpCommunityString).isSet();
+    public SecurityConfiguration(final String version,
+                                 final String authProtocol,
+                                 final String authPassword,
+                                 final String privacyProtocol,
+                                 final String privacyPassword,
+                                 final String securityName,
+                                 final String securityLevel,
+                                 final String communityString) {
+        this.version = version;
+        this.authProtocol = authProtocol;
+        this.authPassword = authPassword;
+        this.privacyProtocol = privacyProtocol;
+        this.privacyPassword = privacyPassword;
+        this.securityName = securityName;
+        this.securityLevel = securityLevel;
+        this.communityString = communityString;
     }
 
-    public static String getSnmpV3() {
-        return SNMP_V3;
+    public String getVersion() {
+        return version;
     }
 
-    public boolean isVersion3() {
-        return isVersion3;
+    public String getAuthProtocol() {
+        return authProtocol;
     }
 
-    public boolean isAuthProtocolValid() {
-        return isAuthProtocolValid;
+    public String getAuthPassword() {
+        return authPassword;
     }
 
-    public boolean isAuthPasswordSet() {
-        return isAuthPasswordSet;
+    public String getPrivacyProtocol() {
+        return privacyProtocol;
     }
 
-    public boolean isPrivacyProtocolValid() {
-        return isPrivateProtocolValid;
+    public String getPrivacyPassword() {
+        return privacyPassword;
     }
 
-    public boolean isPrivacyPasswordSet() {
-        return isPrivatePasswordSet;
+    public String getSecurityName() {
+        return securityName;
     }
 
-    public boolean isSecurityNameSet() {
-        return isSecurityNameSet;
-    }
-
-    public SecurityLevel getSecurityLevel() {
+    public String getSecurityLevel() {
         return securityLevel;
     }
 
-    public boolean isCommunityStringSet() {
-        return isCommunityStringSet;
+    public String getCommunityString() {
+        return communityString;
     }
 }

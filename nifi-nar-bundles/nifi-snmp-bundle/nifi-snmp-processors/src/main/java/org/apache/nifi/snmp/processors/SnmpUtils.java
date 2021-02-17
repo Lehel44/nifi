@@ -16,15 +16,6 @@
  */
 package org.apache.nifi.snmp.processors;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Vector;
-import java.util.regex.Pattern;
-
 import org.apache.nifi.components.ValidationResult;
 import org.apache.nifi.components.Validator;
 import org.apache.nifi.flowfile.FlowFile;
@@ -32,24 +23,23 @@ import org.apache.nifi.processor.ProcessSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.snmp4j.PDU;
-import org.snmp4j.security.AuthMD5;
-import org.snmp4j.security.AuthSHA;
-import org.snmp4j.security.Priv3DES;
-import org.snmp4j.security.PrivAES128;
-import org.snmp4j.security.PrivAES192;
-import org.snmp4j.security.PrivAES256;
-import org.snmp4j.security.PrivDES;
-import org.snmp4j.security.SecurityLevel;
+import org.snmp4j.mp.SnmpConstants;
+import org.snmp4j.security.*;
 import org.snmp4j.smi.OID;
 import org.snmp4j.smi.VariableBinding;
 import org.snmp4j.util.TreeEvent;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.*;
+import java.util.regex.Pattern;
+
 /**
  * Utility helper class that simplifies interactions with target SNMP API and NIFI API.
  */
-abstract class SNMPUtils {
+public class SnmpUtils {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SNMPUtils.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SnmpUtils.class);
 
     public static final Pattern OID_PATTERN = Pattern.compile("[[0-9]+\\.]*");
 
@@ -84,8 +74,9 @@ abstract class SNMPUtils {
 
     /**
      * Updates {@link FlowFile} with attributes representing PDU properties
-     * @param response PDU retried from SNMP Agent
-     * @param flowFile instance of target {@link FlowFile}
+     *
+     * @param response       PDU retried from SNMP Agent
+     * @param flowFile       instance of target {@link FlowFile}
      * @param processSession instance of {@link ProcessSession}
      * @return updated {@link FlowFile}
      */
@@ -119,9 +110,10 @@ abstract class SNMPUtils {
 
     /**
      * Method to add attribute in flow file
-     * @param key attribute key
-     * @param value attribute value
-     * @param flowFile flow file to update
+     *
+     * @param key            attribute key
+     * @param value          attribute value
+     * @param flowFile       flow file to update
      * @param processSession session
      * @return updated flow file
      */
@@ -134,8 +126,9 @@ abstract class SNMPUtils {
 
     /**
      * Method to construct {@link FlowFile} attributes from a {@link TreeEvent}
-     * @param treeEvent a {@link TreeEvent}
-     * @param flowFile instance of the {@link FlowFile} to update
+     *
+     * @param treeEvent      a {@link TreeEvent}
+     * @param flowFile       instance of the {@link FlowFile} to update
      * @param processSession instance of {@link ProcessSession}
      * @return updated {@link FlowFile}
      */
@@ -148,8 +141,9 @@ abstract class SNMPUtils {
 
     /**
      * Method to construct {@link FlowFile} attributes from a vector of {@link VariableBinding}
+     *
      * @param attributes attributes
-     * @param vector vector of {@link VariableBinding}
+     * @param vector     vector of {@link VariableBinding}
      */
     private static void addWalkOidValues(Map<String, String> attributes, Object vector) {
         if (vector instanceof VariableBinding[]) {
@@ -162,8 +156,9 @@ abstract class SNMPUtils {
 
     /**
      * Method to construct {@link FlowFile} attributes from a vector of {@link VariableBinding}
+     *
      * @param attributes attributes
-     * @param vector vector of {@link VariableBinding}
+     * @param vector     vector of {@link VariableBinding}
      */
     private static void addGetOidValues(Map<String, String> attributes, Object vector) {
         if (vector instanceof Vector) {
@@ -177,8 +172,9 @@ abstract class SNMPUtils {
 
     /**
      * Method to add {@link FlowFile} attributes from a {@link VariableBinding}
+     *
      * @param variableBinding {@link VariableBinding}
-     * @param attributes {@link FlowFile} attributes to update
+     * @param attributes      {@link FlowFile} attributes to update
      */
     private static void addAttributeFromVariable(VariableBinding variableBinding, Map<String, String> attributes) {
         attributes.put(SNMP_PROP_PREFIX + variableBinding.getOid() + SNMP_PROP_DELIMITER + variableBinding.getVariable().getSyntax(), variableBinding.getVariable().toString());
@@ -186,6 +182,7 @@ abstract class SNMPUtils {
 
     /**
      * Will validate if provided name corresponds to valid SNMP property.
+     *
      * @param name the name of the property
      * @return 'true' if valid otherwise 'false'
      */
@@ -195,6 +192,7 @@ abstract class SNMPUtils {
 
     /**
      * Method to extract property name from given {@link Method}
+     *
      * @param method method
      * @return property name
      */
@@ -206,60 +204,57 @@ abstract class SNMPUtils {
 
     /**
      * Method to return the private protocol given the property.
+     *
      * @param privProtocol property
      * @return protocol
      */
     public static OID getPriv(String privProtocol) {
         switch (privProtocol) {
-        case "DES":
-            return PrivDES.ID;
-        case "3DES":
-            return Priv3DES.ID;
-        case "AES128":
-            return PrivAES128.ID;
-        case "AES192":
-            return PrivAES192.ID;
-        case "AES256":
-            return PrivAES256.ID;
-        default:
-            return null;
+            case "DES":
+                return PrivDES.ID;
+            case "3DES":
+                return Priv3DES.ID;
+            case "AES128":
+                return PrivAES128.ID;
+            case "AES192":
+                return PrivAES192.ID;
+            case "AES256":
+                return PrivAES256.ID;
+            default:
+                return null;
         }
     }
 
     /**
      * Method to return the authentication protocol given the property.
+     *
      * @param authProtocol property
      * @return protocol
      */
     public static OID getAuth(String authProtocol) {
         switch (authProtocol) {
-        case "SHA":
-            return AuthSHA.ID;
-        case "MD5":
-            return AuthMD5.ID;
-        default:
-            return null;
+            case "SHA":
+                return AuthSHA.ID;
+            case "MD5":
+                return AuthMD5.ID;
+            default:
+                return null;
         }
     }
 
-    /**
-     * Method to get security level from string representation of level
-     * @param level level
-     * @return security level as integer
-     */
-    public static int getSecLevel(String level) {
-        switch (level) {
-        case "noAuthNoPriv":
-            return SecurityLevel.NOAUTH_NOPRIV;
-        case "authNoPriv":
-            return SecurityLevel.AUTH_NOPRIV;
-        case "authPriv":
-        default:
-            return SecurityLevel.AUTH_PRIV;
+    public static int getSnmpVersion(String snmpVersion) {
+        if ("SNMPv1".equals(snmpVersion)) {
+            return SnmpConstants.version1;
+        } else if ("SNMPv2c".equals(snmpVersion)) {
+            return SnmpConstants.version2c;
+        } else if ("SNMPv3".equals(snmpVersion)) {
+            return SnmpConstants.version3;
         }
+        throw new RuntimeException("SNMP version is invalid or not supported.");
     }
 
-    private SNMPUtils() {
+
+    private SnmpUtils() {
         // hide implicit constructor
     }
 }

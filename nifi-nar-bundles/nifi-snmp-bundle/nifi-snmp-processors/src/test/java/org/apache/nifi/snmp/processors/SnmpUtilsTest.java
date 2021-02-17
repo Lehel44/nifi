@@ -38,16 +38,16 @@ import org.snmp4j.smi.UdpAddress;
 import org.snmp4j.transport.DefaultUdpTransportMapping;
 
 /**
- * Test class for {@link SNMPUtils}.
+ * Test class for {@link SnmpUtils}.
  */
-public class SNMPUtilsTest {
+public class SnmpUtilsTest {
 
     /**
      * Test for updating attributes of flow files with {@link PDU}
      */
     @Test
     public void validateUpdateFlowFileAttributes() {
-        GetSNMP processor = new GetSNMP();
+        GetSnmp processor = new GetSnmp();
         ProcessSession processSession = new MockProcessSession(new SharedSessionState(processor, new AtomicLong()),
                 processor);
         FlowFile sourceFlowFile = processSession.create();
@@ -57,12 +57,12 @@ public class SNMPUtilsTest {
         pdu.setErrorStatus(0);
         pdu.setType(4);
 
-        FlowFile f2 = SNMPUtils.updateFlowFileAttributesWithPduProperties(pdu, sourceFlowFile,
+        FlowFile f2 = SnmpUtils.updateFlowFileAttributesWithPduProperties(pdu, sourceFlowFile,
                 processSession);
 
-        assertEquals("0", f2.getAttributes().get(SNMPUtils.SNMP_PROP_PREFIX + "errorIndex"));
-        assertEquals("0", f2.getAttributes().get(SNMPUtils.SNMP_PROP_PREFIX + "errorStatus"));
-        assertEquals("4", f2.getAttributes().get(SNMPUtils.SNMP_PROP_PREFIX + "type"));
+        assertEquals("0", f2.getAttributes().get(SnmpUtils.SNMP_PROP_PREFIX + "errorIndex"));
+        assertEquals("0", f2.getAttributes().get(SnmpUtils.SNMP_PROP_PREFIX + "errorStatus"));
+        assertEquals("4", f2.getAttributes().get(SnmpUtils.SNMP_PROP_PREFIX + "type"));
     }
 
     /**
