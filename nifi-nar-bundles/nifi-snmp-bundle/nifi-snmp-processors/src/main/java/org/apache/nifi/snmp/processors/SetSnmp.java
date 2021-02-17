@@ -16,10 +16,6 @@
  */
 package org.apache.nifi.snmp.processors;
 
-import java.io.IOException;
-import java.util.*;
-import java.util.Map.Entry;
-
 import org.apache.nifi.annotation.behavior.InputRequirement;
 import org.apache.nifi.annotation.behavior.InputRequirement.Requirement;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
@@ -29,19 +25,15 @@ import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.processor.Relationship;
-import org.apache.nifi.processor.exception.ProcessException;
 import org.snmp4j.PDU;
 import org.snmp4j.ScopedPDU;
 import org.snmp4j.event.ResponseEvent;
 import org.snmp4j.mp.SnmpConstants;
-import org.snmp4j.smi.AbstractVariable;
-import org.snmp4j.smi.AssignableFromInteger;
-import org.snmp4j.smi.AssignableFromLong;
-import org.snmp4j.smi.AssignableFromString;
-import org.snmp4j.smi.OID;
-import org.snmp4j.smi.OctetString;
-import org.snmp4j.smi.Variable;
-import org.snmp4j.smi.VariableBinding;
+import org.snmp4j.smi.*;
+
+import java.io.IOException;
+import java.util.*;
+import java.util.Map.Entry;
 
 /**
  * Performs a SNMP Set operation based on attributes of incoming FlowFile.
@@ -54,7 +46,7 @@ import org.snmp4j.smi.VariableBinding;
 @CapabilityDescription("Based on incoming FlowFile attributes, the processor will execute SNMP Set requests." +
         " When founding attributes with name like snmp$<OID>, the processor will atempt to set the value of" +
         " attribute to the corresponding OID given in the attribute name")
-public class SetSNMP extends AbstractSNMPProcessor<SNMPSetter> {
+public class SetSnmp extends AbstractSnmpProcessor<SnmpSetter> {
 
     public static final Relationship REL_SUCCESS = new Relationship.Builder()
             .name("success")
@@ -72,10 +64,10 @@ public class SetSNMP extends AbstractSNMPProcessor<SNMPSetter> {
     )));
 
     /**
-     * @see org.apache.nifi.snmp.processors.AbstractSNMPProcessor#onTriggerSnmp(org.apache.nifi.processor.ProcessContext, org.apache.nifi.processor.ProcessSession)
+     * @see AbstractSnmpProcessor#onTriggerSnmp(org.apache.nifi.processor.ProcessContext, org.apache.nifi.processor.ProcessSession)
      */
     @Override
-    protected void onTriggerSnmp(ProcessContext context, ProcessSession processSession) throws ProcessException {
+    protected void onTriggerSnmp(ProcessContext context, ProcessSession processSession) {
         FlowFile flowFile = processSession.get();
         if (flowFile != null) {
             // Create the PDU object
@@ -94,12 +86,12 @@ public class SetSNMP extends AbstractSNMPProcessor<SNMPSetter> {
                         this.getLogger().error("Set request timed out or parameters are incorrect.");
                         context.yield();
                     } else if (response.getResponse().getErrorStatus() == PDU.noError) {
-                        flowFile = SNMPUtils.updateFlowFileAttributesWithPduProperties(pdu, flowFile, processSession);
+                        flowFile = SnmpUtils.updateFlowFileAttributesWithPduProperties(pdu, flowFile, processSession);
                         processSession.transfer(flowFile, REL_SUCCESS);
                         processSession.getProvenanceReporter().send(flowFile, this.snmpTarget.getAddress().toString());
                     } else {
                         final String error = response.getResponse().getErrorStatusText();
-                        flowFile = SNMPUtils.addAttribute(SNMPUtils.SNMP_PROP_PREFIX + "error", error, flowFile, processSession);
+                        flowFile = SnmpUtils.addAttribute(SnmpUtils.SNMP_PROP_PREFIX + "error", error, flowFile, processSession);
                         processSession.transfer(processSession.penalize(flowFile), REL_FAILURE);
                         this.getLogger().error("Failed while executing SNMP Set [{}] via " + this.targetResource + ". Error = {}", response.getRequest().getVariableBindings(), error);
                     }
@@ -127,11 +119,11 @@ public class SetSNMP extends AbstractSNMPProcessor<SNMPSetter> {
     private boolean addVariables(PDU pdu, Map<String, String> attributes) {
         boolean result = false;
         for (Entry<String, String> attributeEntry : attributes.entrySet()) {
-            if (attributeEntry.getKey().startsWith(SNMPUtils.SNMP_PROP_PREFIX)) {
-                String[] splits = attributeEntry.getKey().split("\\" + SNMPUtils.SNMP_PROP_DELIMITER);
+            if (attributeEntry.getKey().startsWith(SnmpUtils.SNMP_PROP_PREFIX)) {
+                String[] splits = attributeEntry.getKey().split("\\" + SnmpUtils.SNMP_PROP_DELIMITER);
                 String snmpPropName = splits[1];
                 String snmpPropValue = attributeEntry.getValue();
-                if (SNMPUtils.OID_PATTERN.matcher(snmpPropName).matches()) {
+                if (SnmpUtils.OID_PATTERN.matcher(snmpPropName).matches()) {
                     Variable var;
                     if (splits.length == 2) { // no SMI syntax defined
                         var = new OctetString(snmpPropValue);
@@ -194,11 +186,11 @@ public class SetSNMP extends AbstractSNMPProcessor<SNMPSetter> {
     }
 
     /**
-     * @see org.apache.nifi.snmp.processors.AbstractSNMPProcessor#finishBuildingTargetResource(org.apache.nifi.processor.ProcessContext)
+     * @see AbstractSnmpProcessor#finishBuildingTargetResource(org.apache.nifi.processor.ProcessContext)
      */
     @Override
-    protected SNMPSetter finishBuildingTargetResource(ProcessContext context) {
-        return new SNMPSetter(this.snmp, this.snmpTarget);
+    protected SnmpSetter finishBuildingTargetResource(ProcessContext context) {
+        return new SnmpSetter(snmpContext.getSnmp(), snmpTarget);
     }
 
 }

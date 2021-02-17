@@ -3,11 +3,16 @@ package org.apache.nifi.snmp.validators;
 
 import org.apache.nifi.components.ValidationResult;
 import org.apache.nifi.snmp.configuration.SecurityConfiguration;
+import org.apache.nifi.util.StringUtils;
+import org.snmp4j.security.SecurityLevel;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 
 public class OidValidator {
+
+    private static final String SNMP_V3 = "SNMPv3";
 
     private final SecurityConfiguration securityConfiguration;
     private final List<ValidationResult> problems;
@@ -18,60 +23,64 @@ public class OidValidator {
     }
 
     public Collection<ValidationResult> validate() {
+        final boolean isVersion3 = SNMP_V3.equals(securityConfiguration.getVersion());
+        final boolean isSecurityNameInvalid = isInvalid(securityConfiguration.getSecurityName());
+        final boolean isCommunityStringInvalid = isInvalid(securityConfiguration.getCommunityString());
 
-        if (securityConfiguration.isVersion3()) {
-            if (!securityConfiguration.isSecurityNameSet()) {
-                problems.add(new ValidationResult.Builder()
-                        .input("SNMP Security Name")
-                        .valid(false)
-                        .explanation("SNMP Security Name must be set with SNMPv3.")
-                        .build());
-            }
-
+        if (isVersion3 && isSecurityNameInvalid) {
+            problems.add(new ValidationResult.Builder()
+                    .input("SNMP Security Name")
+                    .valid(false)
+                    .explanation("SNMP Security Name must be set with SNMPv3.")
+                    .build());
             checkSecurityLevel(securityConfiguration, problems);
-        } else {
-            final boolean isCommunitySet = securityConfiguration.isCommunityStringSet();
-            if (!isCommunitySet) {
-                problems.add(new ValidationResult.Builder()
-                        .input("SNMP Community")
-                        .valid(false)
-                        .explanation("SNMP Community must be set with SNMPv1 and SNMPv2c.")
-                        .build());
-            }
-        }
 
+        } else if (isCommunityStringInvalid) {
+            problems.add(new ValidationResult.Builder()
+                    .input("SNMP Community")
+                    .valid(false)
+                    .explanation("SNMP Community must be set with SNMPv1 and SNMPv2c.")
+                    .build());
+        }
         return problems;
     }
 
     private void checkSecurityLevel(SecurityConfiguration securityConfiguration, List<ValidationResult> problems) {
-        final boolean isAuthProtocolValid = securityConfiguration.isAuthProtocolValid();
-        final boolean isAuthPasswordSet = securityConfiguration.isAuthPasswordSet();
-        final boolean isPrivacyProtocolValid = securityConfiguration.isPrivacyProtocolValid();
-        final boolean isPrivacyPasswordSet = securityConfiguration.isPrivacyPasswordSet();
 
-        switch (securityConfiguration.getSecurityLevel()) {
-            case AUTH_NO_PRIV:
-                if (!isAuthProtocolValid || !isAuthPasswordSet) {
-                    problems.add(new ValidationResult.Builder()
-                            .input("SNMP Security Level")
-                            .valid(false)
-                            .explanation("Authentication protocol and password must be set when using authNoPriv security level.")
-                            .build());
-                }
-                break;
-            case AUTH_PRIV:
-                if (!isAuthProtocolValid || !isAuthPasswordSet || !isPrivacyProtocolValid || !isPrivacyPasswordSet) {
-                    problems.add(new ValidationResult.Builder()
-                            .input("SNMP Security Level")
-                            .valid(false)
-                            .explanation("All protocols and passwords must be set when using authPriv security level.")
-                            .build());
-                }
-                break;
-            case NO_AUTH_NO_PRIV:
-            default:
-                break;
+        final boolean isAuthProtocolInvalid = isInvalid(securityConfiguration.getAuthProtocol());
+        final boolean isAuthPasswordInvalid = isInvalid(securityConfiguration.getAuthPassword());
+        final boolean isPrivacyProtocolInvalid = isInvalid(securityConfiguration.getPrivacyProtocol());
+        final boolean isPrivacyPasswordInvalid = isInvalid(securityConfiguration.getPrivacyPassword());
+        final SecurityLevel securityLevel = SecurityLevel.valueOf(securityConfiguration.getSecurityLevel());
+
+        if (isAuthNoPrivSecurityLevelInvalid(securityLevel, isAuthProtocolInvalid, isAuthPasswordInvalid)) {
+            problems.add(new ValidationResult.Builder()
+                    .input("SNMP Security Level")
+                    .valid(false)
+                    .explanation("Authentication protocol and password must be set when using authNoPriv security level.")
+                    .build());
         }
+
+        if (isAuthPrivSecurityLevelInvalid(securityLevel, isAuthProtocolInvalid, isAuthPasswordInvalid, isPrivacyProtocolInvalid, isPrivacyPasswordInvalid)) {
+            problems.add(new ValidationResult.Builder()
+                    .input("SNMP Security Level")
+                    .valid(false)
+                    .explanation("All protocols and passwords must be set when using authPriv security level.")
+                    .build());
+        }
+    }
+
+    private boolean isInvalid(String property) {
+        return Objects.isNull(property) || StringUtils.EMPTY.equals(property);
+    }
+
+    private boolean isAuthNoPrivSecurityLevelInvalid(final SecurityLevel securityLevel, final boolean isAuthProtocolInvalid, final boolean isAuthPasswordInvalid) {
+        return SecurityLevel.authNoPriv == securityLevel && (isAuthProtocolInvalid || isAuthPasswordInvalid);
+    }
+
+    private boolean isAuthPrivSecurityLevelInvalid(final SecurityLevel securityLevel, final boolean isAuthProtocolInvalid, final boolean isAuthPasswordInvalid,
+                                                   final boolean isPrivacyProtocolInvalid, final boolean isPrivacyPasswordInvalid) {
+        return SecurityLevel.authPriv == securityLevel && (isAuthProtocolInvalid || isAuthPasswordInvalid || isPrivacyProtocolInvalid || isPrivacyPasswordInvalid);
     }
 
 }

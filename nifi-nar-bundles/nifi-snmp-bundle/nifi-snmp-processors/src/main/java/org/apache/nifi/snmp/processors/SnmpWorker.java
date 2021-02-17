@@ -17,7 +17,6 @@
 package org.apache.nifi.snmp.processors;
 
 import java.io.IOException;
-import java.util.concurrent.TimeoutException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,12 +26,12 @@ import org.snmp4j.Snmp;
 /**
  * Base class for implementing SNMP workers.
  *
- * @see SNMPSetter
- * @see SNMPGetter
+ * @see SnmpSetter
+ * @see SnmpGetter
  */
-abstract class SNMPWorker implements AutoCloseable {
+abstract class SnmpWorker implements AutoCloseable {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SNMPWorker.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SnmpWorker.class);
     protected final Snmp snmp;
     protected final AbstractTarget target;
 
@@ -43,7 +42,7 @@ abstract class SNMPWorker implements AutoCloseable {
      * @param snmp   instance of {@link Snmp}
      * @param target instance of {@link AbstractTarget}
      */
-    protected SNMPWorker(Snmp snmp, AbstractTarget target) {
+    protected SnmpWorker(Snmp snmp, AbstractTarget target) {
         this.snmp = snmp;
         this.target = target;
     }
