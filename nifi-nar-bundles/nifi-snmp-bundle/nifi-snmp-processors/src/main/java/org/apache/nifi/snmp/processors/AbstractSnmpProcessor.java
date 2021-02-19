@@ -16,33 +16,26 @@
  */
 package org.apache.nifi.snmp.processors;
 
+import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.annotation.lifecycle.OnStopped;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.components.ValidationContext;
 import org.apache.nifi.components.ValidationResult;
 import org.apache.nifi.processor.AbstractProcessor;
 import org.apache.nifi.processor.ProcessContext;
-import org.apache.nifi.processor.ProcessSession;
-import org.apache.nifi.processor.Processor;
-import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.snmp.configuration.BasicConfiguration;
 import org.apache.nifi.snmp.configuration.SecurityConfiguration;
 import org.apache.nifi.snmp.context.SnmpContext;
 import org.apache.nifi.snmp.validators.OidValidator;
-import org.snmp4j.AbstractTarget;
-import org.snmp4j.TransportMapping;
 
 import java.util.*;
 
 /**
  * Base processor that uses SNMP4J client API.
  * (http://www.snmp4j.org/)
- *
- * @param <T> the type of {@link SnmpWorker}. Please see {@link SnmpSetter}
- *            and {@link SnmpGetter}
  */
-abstract class AbstractSnmpProcessor<T extends SnmpWorker> extends AbstractProcessor {
+abstract class AbstractSnmpProcessor extends AbstractProcessor {
 
     // Property to define the host of the SNMP agent.
     public static final PropertyDescriptor HOST = new PropertyDescriptor.Builder()
@@ -180,19 +173,11 @@ abstract class AbstractSnmpProcessor<T extends SnmpWorker> extends AbstractProce
             SNMP_TIMEOUT
     ));
 
-    protected volatile AbstractTarget snmpTarget;
-    protected volatile TransportMapping transportMapping;
-    protected volatile SnmpContext snmpContext;
-    protected volatile T targetResource;
+    protected SnmpContext snmpContext;
 
-    /**
-     * Builds target resource upon first invocation and delegates to the
-     * implementation of {@link #onTriggerSnmp(ProcessContext, ProcessSession)} method for
-     * further processing.
-     */
-    @Override
-    public void onTrigger(ProcessContext context, ProcessSession session) {
 
+    @OnScheduled
+    public void initSnmpClient(ProcessContext context) {
         final BasicConfiguration basicConfiguration = new BasicConfiguration(
                 context.getProperty(HOST).getValue(),
                 context.getProperty(PORT).asInteger(),
@@ -213,7 +198,6 @@ abstract class AbstractSnmpProcessor<T extends SnmpWorker> extends AbstractProce
 
         snmpContext = SnmpContext.newInstance();
         snmpContext.init(basicConfiguration, securityConfiguration);
-        onTriggerSnmp(context, session);
     }
 
     /**
@@ -221,16 +205,9 @@ abstract class AbstractSnmpProcessor<T extends SnmpWorker> extends AbstractProce
      */
     @OnStopped
     public void close() {
-        try {
-            if (targetResource != null) {
-                targetResource.close();
-            }
-        } catch (Exception e) {
-            getLogger().error("Failure while closing target resource {}", targetResource, e);
+        if (snmpContext != null) {
+            snmpContext.close();
         }
-        targetResource = null;
-
-        snmpContext.close();
     }
 
     /**
@@ -254,25 +231,4 @@ abstract class AbstractSnmpProcessor<T extends SnmpWorker> extends AbstractProce
         OidValidator oidValidator = new OidValidator(securityConfiguration, problems);
         return oidValidator.validate();
     }
-
-    /**
-     * Delegate method to supplement
-     * {@link #onTrigger(ProcessContext, ProcessSession)}. It is implemented by
-     * sub-classes to perform {@link Processor} specific functionality.
-     *
-     * @param context instance of {@link ProcessContext}
-     * @param session instance of {@link ProcessSession}
-     * @throws ProcessException Process exception
-     */
-    protected abstract void onTriggerSnmp(ProcessContext context, ProcessSession session);
-
-    /**
-     * Delegate method to supplement building of target {@link SnmpWorker} (see
-     * {@link SnmpSetter} or {@link SnmpGetter}) and is implemented by
-     * sub-classes.
-     *
-     * @param context instance of {@link ProcessContext}
-     * @return new instance of {@link SnmpWorker}
-     */
-    protected abstract T finishBuildingTargetResource(ProcessContext context);
 }

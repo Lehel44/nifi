@@ -20,6 +20,7 @@ import org.apache.nifi.annotation.behavior.InputRequirement;
 import org.apache.nifi.annotation.behavior.InputRequirement.Requirement;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
+import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.ProcessContext;
@@ -29,11 +30,9 @@ import org.snmp4j.PDU;
 import org.snmp4j.ScopedPDU;
 import org.snmp4j.event.ResponseEvent;
 import org.snmp4j.mp.SnmpConstants;
-import org.snmp4j.smi.*;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.Map.Entry;
 
 /**
  * Performs a SNMP Set operation based on attributes of incoming FlowFile.
@@ -46,7 +45,7 @@ import java.util.Map.Entry;
 @CapabilityDescription("Based on incoming FlowFile attributes, the processor will execute SNMP Set requests." +
         " When founding attributes with name like snmp$<OID>, the processor will atempt to set the value of" +
         " attribute to the corresponding OID given in the attribute name")
-public class SetSnmp extends AbstractSnmpProcessor<SnmpSetter> {
+public class SetSnmp extends AbstractSnmpProcessor {
 
     public static final Relationship REL_SUCCESS = new Relationship.Builder()
             .name("success")
@@ -63,110 +62,59 @@ public class SetSnmp extends AbstractSnmpProcessor<SnmpSetter> {
             REL_FAILURE
     )));
 
-    /**
-     * @see AbstractSnmpProcessor#onTriggerSnmp(org.apache.nifi.processor.ProcessContext, org.apache.nifi.processor.ProcessSession)
-     */
+    private SnmpSetter snmpSetter;
+
+    @OnScheduled
+    public void initSnmpGetter(ProcessContext context) {
+        snmpSetter = new SnmpSetter(snmpContext.getSnmp(), snmpContext.getTarget());
+    }
+
+
     @Override
-    protected void onTriggerSnmp(ProcessContext context, ProcessSession processSession) {
+    public void onTrigger(ProcessContext context, ProcessSession processSession) {
         FlowFile flowFile = processSession.get();
         if (flowFile != null) {
-            // Create the PDU object
-            PDU pdu;
-            if (this.snmpTarget.getVersion() == SnmpConstants.version3) {
-                pdu = new ScopedPDU();
-            } else {
-                pdu = new PDU();
-            }
-            if (this.addVariables(pdu, flowFile.getAttributes())) {
+            PDU pdu = createPdu();
+            if (SnmpUtils.addVariables(pdu, flowFile.getAttributes(), getLogger())) {
                 pdu.setType(PDU.SET);
-                try {
-                    ResponseEvent response = this.targetResource.set(pdu);
-                    if (response.getResponse() == null) {
-                        processSession.transfer(processSession.penalize(flowFile), REL_FAILURE);
-                        this.getLogger().error("Set request timed out or parameters are incorrect.");
-                        context.yield();
-                    } else if (response.getResponse().getErrorStatus() == PDU.noError) {
-                        flowFile = SnmpUtils.updateFlowFileAttributesWithPduProperties(pdu, flowFile, processSession);
-                        processSession.transfer(flowFile, REL_SUCCESS);
-                        processSession.getProvenanceReporter().send(flowFile, this.snmpTarget.getAddress().toString());
-                    } else {
-                        final String error = response.getResponse().getErrorStatusText();
-                        flowFile = SnmpUtils.addAttribute(SnmpUtils.SNMP_PROP_PREFIX + "error", error, flowFile, processSession);
-                        processSession.transfer(processSession.penalize(flowFile), REL_FAILURE);
-                        this.getLogger().error("Failed while executing SNMP Set [{}] via " + this.targetResource + ". Error = {}", response.getRequest().getVariableBindings(), error);
-                    }
-                } catch (IOException e) {
-                    processSession.transfer(processSession.penalize(flowFile), REL_FAILURE);
-                    this.getLogger().error("Failed while executing SNMP Set via " + this.targetResource, e);
-                    context.yield();
-                }
+                processPdu(context, processSession, flowFile, pdu);
             } else {
                 processSession.transfer(processSession.penalize(flowFile), REL_FAILURE);
-                this.getLogger().warn("No attributes found in the FlowFile to perform SNMP Set");
+                getLogger().warn("No attributes found in the FlowFile to perform SNMP Set");
             }
         }
     }
 
-    /**
-     * Method to construct {@link VariableBinding} based on {@link FlowFile}
-     * attributes in order to update the {@link PDU} that is going to be sent to
-     * the SNMP Agent.
-     *
-     * @param pdu        {@link PDU} to be sent
-     * @param attributes {@link FlowFile} attributes
-     * @return true if at least one {@link VariableBinding} has been created, false otherwise
-     */
-    private boolean addVariables(PDU pdu, Map<String, String> attributes) {
-        boolean result = false;
-        for (Entry<String, String> attributeEntry : attributes.entrySet()) {
-            if (attributeEntry.getKey().startsWith(SnmpUtils.SNMP_PROP_PREFIX)) {
-                String[] splits = attributeEntry.getKey().split("\\" + SnmpUtils.SNMP_PROP_DELIMITER);
-                String snmpPropName = splits[1];
-                String snmpPropValue = attributeEntry.getValue();
-                if (SnmpUtils.OID_PATTERN.matcher(snmpPropName).matches()) {
-                    Variable var;
-                    if (splits.length == 2) { // no SMI syntax defined
-                        var = new OctetString(snmpPropValue);
-                    } else {
-                        int smiSyntax = Integer.parseInt(splits[2]);
-                        var = this.stringToVariable(snmpPropValue, smiSyntax);
-                    }
-                    if (var != null) {
-                        VariableBinding varBind = new VariableBinding(new OID(snmpPropName), var);
-                        pdu.add(varBind);
-                        result = true;
-                    }
-                }
-            }
-        }
-        return result;
-    }
-
-    /**
-     * Method to create the variable from the attribute value and the given SMI syntax value
-     *
-     * @param value     attribute value
-     * @param smiSyntax attribute SMI Syntax
-     * @return variable
-     */
-    private Variable stringToVariable(String value, int smiSyntax) {
-        Variable var = AbstractVariable.createFromSyntax(smiSyntax);
+    private void processPdu(ProcessContext context, ProcessSession processSession, FlowFile flowFile, PDU pdu) {
         try {
-            if (var instanceof AssignableFromString) {
-                ((AssignableFromString) var).setValue(value);
-            } else if (var instanceof AssignableFromInteger) {
-                ((AssignableFromInteger) var).setValue(Integer.parseInt(value));
-            } else if (var instanceof AssignableFromLong) {
-                ((AssignableFromLong) var).setValue(Long.parseLong(value));
+            ResponseEvent response = snmpSetter.set(pdu);
+            if (response.getResponse() == null) {
+                processSession.transfer(processSession.penalize(flowFile), REL_FAILURE);
+                getLogger().error("Set request timed out or parameters are incorrect.");
+                context.yield();
+            } else if (response.getResponse().getErrorStatus() == PDU.noError) {
+                flowFile = SnmpUtils.updateFlowFileAttributesWithPduProperties(pdu, flowFile, processSession);
+                processSession.transfer(flowFile, REL_SUCCESS);
+                processSession.getProvenanceReporter().send(flowFile, snmpContext.getTarget().getAddress().toString());
             } else {
-                this.getLogger().error("Unsupported conversion of [" + value + "] to " + var.getSyntaxString());
-                var = null;
+                final String error = response.getResponse().getErrorStatusText();
+                flowFile = SnmpUtils.addAttribute(SnmpUtils.SNMP_PROP_PREFIX + "error", error, flowFile, processSession);
+                processSession.transfer(processSession.penalize(flowFile), REL_FAILURE);
+                getLogger().error("Failed while executing SNMP Set [{}] via {}. Error = {}", response.getRequest().getVariableBindings(), snmpSetter, error);
             }
-        } catch (IllegalArgumentException e) {
-            this.getLogger().error("Unsupported conversion of [" + value + "] to " + var.getSyntaxString(), e);
-            var = null;
+        } catch (IOException e) {
+            processSession.transfer(processSession.penalize(flowFile), REL_FAILURE);
+            getLogger().error("Failed while executing SNMP Set via " + snmpSetter, e);
+            context.yield();
         }
-        return var;
+    }
+
+    private PDU createPdu() {
+        if (snmpContext.getTarget().getVersion() == SnmpConstants.version3) {
+            return new ScopedPDU();
+        } else {
+            return new PDU();
+        }
     }
 
     /**
@@ -184,13 +132,4 @@ public class SetSnmp extends AbstractSnmpProcessor<SnmpSetter> {
     public Set<Relationship> getRelationships() {
         return RELATIONSHIPS;
     }
-
-    /**
-     * @see AbstractSnmpProcessor#finishBuildingTargetResource(org.apache.nifi.processor.ProcessContext)
-     */
-    @Override
-    protected SnmpSetter finishBuildingTargetResource(ProcessContext context) {
-        return new SnmpSetter(snmpContext.getSnmp(), snmpTarget);
-    }
-
 }
