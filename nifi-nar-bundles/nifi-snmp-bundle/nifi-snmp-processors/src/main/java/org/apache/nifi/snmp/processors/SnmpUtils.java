@@ -19,14 +19,14 @@ package org.apache.nifi.snmp.processors;
 import org.apache.nifi.components.ValidationResult;
 import org.apache.nifi.components.Validator;
 import org.apache.nifi.flowfile.FlowFile;
+import org.apache.nifi.logging.ComponentLog;
 import org.apache.nifi.processor.ProcessSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.snmp4j.PDU;
 import org.snmp4j.mp.SnmpConstants;
 import org.snmp4j.security.*;
-import org.snmp4j.smi.OID;
-import org.snmp4j.smi.VariableBinding;
+import org.snmp4j.smi.*;
 import org.snmp4j.util.TreeEvent;
 
 import java.lang.reflect.Method;
@@ -253,6 +253,67 @@ public class SnmpUtils {
         throw new RuntimeException("SNMP version is invalid or not supported.");
     }
 
+    /**
+     * Method to create the variable from the attribute value and the given SMI syntax value
+     *
+     * @param value     attribute value
+     * @param smiSyntax attribute SMI Syntax
+     * @return variable
+     */
+    public static Variable stringToVariable(String value, int smiSyntax, ComponentLog logger) {
+        Variable var = AbstractVariable.createFromSyntax(smiSyntax);
+        try {
+            if (var instanceof AssignableFromString) {
+                ((AssignableFromString) var).setValue(value);
+            } else if (var instanceof AssignableFromInteger) {
+                ((AssignableFromInteger) var).setValue(Integer.parseInt(value));
+            } else if (var instanceof AssignableFromLong) {
+                ((AssignableFromLong) var).setValue(Long.parseLong(value));
+            } else {
+                logger.error("Unsupported conversion of [ {} ] to ", var.getSyntaxString());
+                var = null;
+            }
+        } catch (IllegalArgumentException e) {
+            logger.error("Unsupported conversion of [ {} ] to ", var.getSyntaxString(), e);
+            var = null;
+        }
+        return var;
+    }
+
+    /**
+     * Method to construct {@link VariableBinding} based on {@link FlowFile}
+     * attributes in order to update the {@link PDU} that is going to be sent to
+     * the SNMP Agent.
+     *
+     * @param pdu        {@link PDU} to be sent
+     * @param attributes {@link FlowFile} attributes
+     * @return true if at least one {@link VariableBinding} has been created, false otherwise
+     */
+    public static boolean addVariables(PDU pdu, Map<String, String> attributes, ComponentLog logger) {
+        boolean result = false;
+        for (Map.Entry<String, String> attributeEntry : attributes.entrySet()) {
+            if (attributeEntry.getKey().startsWith(SnmpUtils.SNMP_PROP_PREFIX)) {
+                String[] splits = attributeEntry.getKey().split("\\" + SnmpUtils.SNMP_PROP_DELIMITER);
+                String snmpPropName = splits[1];
+                String snmpPropValue = attributeEntry.getValue();
+                if (SnmpUtils.OID_PATTERN.matcher(snmpPropName).matches()) {
+                    Variable var;
+                    if (splits.length == 2) { // no SMI syntax defined
+                        var = new OctetString(snmpPropValue);
+                    } else {
+                        int smiSyntax = Integer.parseInt(splits[2]);
+                        var = SnmpUtils.stringToVariable(snmpPropValue, smiSyntax, logger);
+                    }
+                    if (var != null) {
+                        VariableBinding varBind = new VariableBinding(new OID(snmpPropName), var);
+                        pdu.add(varBind);
+                        result = true;
+                    }
+                }
+            }
+        }
+        return result;
+    }
 
     private SnmpUtils() {
         // hide implicit constructor
