@@ -26,6 +26,7 @@ import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.snmp.configuration.BasicConfiguration;
 import org.apache.nifi.snmp.configuration.SecurityConfiguration;
+import org.apache.nifi.snmp.configuration.SecurityConfigurationBuilder;
 import org.apache.nifi.snmp.context.SnmpContext;
 import org.apache.nifi.snmp.validators.OidValidator;
 
@@ -185,16 +186,16 @@ abstract class AbstractSnmpProcessor extends AbstractProcessor {
                 context.getProperty(SNMP_TIMEOUT).asInteger()
         );
 
-        final SecurityConfiguration securityConfiguration = new SecurityConfiguration(
-                context.getProperty(SNMP_VERSION).getValue(),
-                context.getProperty(SNMP_SECURITY_NAME).getValue(),
-                context.getProperty(SNMP_AUTH_PROTOCOL).getValue(),
-                context.getProperty(SNMP_AUTH_PASSWORD).getValue(),
-                context.getProperty(SNMP_PRIVACY_PROTOCOL).getValue(),
-                context.getProperty(SNMP_PRIVACY_PASSWORD).getValue(),
-                context.getProperty(SNMP_SECURITY_LEVEL).getValue(),
-                context.getProperty(SNMP_COMMUNITY).getValue()
-        );
+        final SecurityConfiguration securityConfiguration = new SecurityConfigurationBuilder()
+                .setVersion(context.getProperty(SNMP_VERSION).getValue())
+                .setAuthProtocol(context.getProperty(SNMP_AUTH_PROTOCOL).getValue())
+                .setAuthPassword(context.getProperty(SNMP_AUTH_PASSWORD).getValue())
+                .setPrivacyProtocol(context.getProperty(SNMP_PRIVACY_PROTOCOL).getValue())
+                .setPrivacyPassword(context.getProperty(SNMP_PRIVACY_PASSWORD).getValue())
+                .setSecurityName(context.getProperty(SNMP_SECURITY_NAME).getValue())
+                .setSecurityLevel(context.getProperty(SNMP_SECURITY_LEVEL).getValue())
+                .setCommunityString(context.getProperty(SNMP_COMMUNITY).getValue())
+                .createSecurityConfiguration();
 
         snmpContext = SnmpContext.newInstance();
         snmpContext.init(basicConfiguration, securityConfiguration);
@@ -217,16 +218,16 @@ abstract class AbstractSnmpProcessor extends AbstractProcessor {
     protected Collection<ValidationResult> customValidate(ValidationContext validationContext) {
         final List<ValidationResult> problems = new ArrayList<>(super.customValidate(validationContext));
 
-        final SecurityConfiguration securityConfiguration = new SecurityConfiguration(
-                validationContext.getProperty(SNMP_VERSION).getValue(),
-                validationContext.getProperty(SNMP_SECURITY_NAME).getValue(),
-                validationContext.getProperty(SNMP_AUTH_PROTOCOL).getValue(),
-                validationContext.getProperty(SNMP_AUTH_PASSWORD).getValue(),
-                validationContext.getProperty(SNMP_PRIVACY_PROTOCOL).getValue(),
-                validationContext.getProperty(SNMP_PRIVACY_PASSWORD).getValue(),
-                validationContext.getProperty(SNMP_SECURITY_LEVEL).getValue(),
-                validationContext.getProperty(SNMP_COMMUNITY).getValue()
-        );
+        final SecurityConfiguration securityConfiguration = new SecurityConfigurationBuilder()
+                .setVersion(validationContext.getProperty(SNMP_VERSION).getValue())
+                .setAuthProtocol(validationContext.getProperty(SNMP_SECURITY_NAME).getValue())
+                .setAuthPassword(validationContext.getProperty(SNMP_AUTH_PROTOCOL).getValue())
+                .setPrivacyProtocol(validationContext.getProperty(SNMP_AUTH_PASSWORD).getValue())
+                .setPrivacyPassword(validationContext.getProperty(SNMP_PRIVACY_PROTOCOL).getValue())
+                .setSecurityName(validationContext.getProperty(SNMP_PRIVACY_PASSWORD).getValue())
+                .setSecurityLevel(validationContext.getProperty(SNMP_SECURITY_LEVEL).getValue())
+                .setCommunityString(validationContext.getProperty(SNMP_COMMUNITY).getValue())
+                .createSecurityConfiguration();
 
         OidValidator oidValidator = new OidValidator(securityConfiguration, problems);
         return oidValidator.validate();
