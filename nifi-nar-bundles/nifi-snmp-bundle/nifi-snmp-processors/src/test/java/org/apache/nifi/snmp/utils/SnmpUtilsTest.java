@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.nifi.snmp.processors;
+package org.apache.nifi.snmp.utils;
 
 import static org.junit.Assert.assertEquals;
 
@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.ProcessSession;
+import org.apache.nifi.snmp.processors.GetSnmp;
 import org.apache.nifi.snmp.utils.SnmpUtils;
 import org.apache.nifi.util.MockProcessSession;
 import org.apache.nifi.util.SharedSessionState;

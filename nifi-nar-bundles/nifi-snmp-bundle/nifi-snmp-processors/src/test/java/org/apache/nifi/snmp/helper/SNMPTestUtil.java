@@ -14,10 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.nifi.snmp.processors;
+package org.apache.nifi.snmp.helper;
+
+import org.apache.nifi.flowfile.FlowFile;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.util.HashMap;
+import java.util.Map;
 
 public class SNMPTestUtil {
 
@@ -31,6 +35,67 @@ public class SNMPTestUtil {
         } catch (Exception e) {
             throw new IllegalStateException("Failed to discover available port.", e);
         }
+    }
+
+    public static FlowFile createFlowFile(final long id, final long fileSize, final Map<String, String> attributes) {
+        final Map<String, String> attrCopy = new HashMap<>(attributes);
+
+        return new FlowFile() {
+            @Override
+            public long getId() {
+                return id;
+            }
+
+            @Override
+            public long getEntryDate() {
+                return System.currentTimeMillis();
+            }
+
+            @Override
+            public long getLineageStartDate() {
+                return System.currentTimeMillis();
+            }
+
+            @Override
+            public Long getLastQueueDate() {
+                return System.currentTimeMillis();
+            }
+
+            @Override
+            public boolean isPenalized() {
+                return false;
+            }
+
+            @Override
+            public String getAttribute(final String s) {
+                return attrCopy.get(s);
+            }
+
+            @Override
+            public long getSize() {
+                return fileSize;
+            }
+
+            @Override
+            public Map<String, String> getAttributes() {
+                return attrCopy;
+            }
+
+            @Override
+            public int compareTo(final FlowFile o) {
+                return 0;
+            }
+
+            @Override
+            public long getLineageStartIndex() {
+                return 0;
+            }
+
+            @Override
+            public long getQueueDateIndex() {
+                return 0;
+            }
+        };
     }
 
 }
