@@ -2,8 +2,6 @@ package org.apache.nifi.snmp.configuration;
 
 public class SecurityConfiguration {
 
-    private static final String SNMP_V3 = "SNMPv3";
-
     private final String version;
     private final String authProtocol;
     private final String authPassword;

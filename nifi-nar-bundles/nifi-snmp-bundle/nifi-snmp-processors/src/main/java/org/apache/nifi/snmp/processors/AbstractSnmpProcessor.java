@@ -28,7 +28,9 @@ import org.apache.nifi.snmp.configuration.BasicConfiguration;
 import org.apache.nifi.snmp.configuration.SecurityConfiguration;
 import org.apache.nifi.snmp.configuration.SecurityConfigurationBuilder;
 import org.apache.nifi.snmp.context.SnmpContext;
+import org.apache.nifi.snmp.logging.Slf4jLogFactory;
 import org.apache.nifi.snmp.validators.OidValidator;
+import org.snmp4j.log.LogFactory;
 
 import java.util.*;
 
@@ -37,6 +39,10 @@ import java.util.*;
  * (http://www.snmp4j.org/)
  */
 abstract class AbstractSnmpProcessor extends AbstractProcessor {
+
+    static {
+        LogFactory.setLogFactory(new Slf4jLogFactory());
+    }
 
     // Property to define the host of the SNMP agent.
     public static final PropertyDescriptor HOST = new PropertyDescriptor.Builder()
@@ -176,8 +182,6 @@ abstract class AbstractSnmpProcessor extends AbstractProcessor {
 
     protected SnmpContext snmpContext;
 
-
-    @OnScheduled
     public void initSnmpClient(ProcessContext context) {
         final BasicConfiguration basicConfiguration = new BasicConfiguration(
                 context.getProperty(HOST).getValue(),
