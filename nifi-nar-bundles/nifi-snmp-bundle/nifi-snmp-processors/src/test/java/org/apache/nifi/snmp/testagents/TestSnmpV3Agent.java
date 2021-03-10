@@ -1,5 +1,6 @@
-package org.apache.nifi.snmp.processors;
+package org.apache.nifi.snmp.testagents;
 
+import org.apache.nifi.snmp.helper.SNMPTestUtil;
 import org.snmp4j.TransportMapping;
 import org.snmp4j.agent.*;
 import org.snmp4j.agent.mo.snmp.*;

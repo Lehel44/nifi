@@ -1,10 +1,10 @@
-package org.apache.nifi.snmp.processors;
+package org.apache.nifi.snmp.testagents;
 
+import org.apache.nifi.snmp.helper.SNMPTestUtil;
 import org.snmp4j.TransportMapping;
 import org.snmp4j.agent.*;
 import org.snmp4j.agent.mo.snmp.*;
 import org.snmp4j.agent.security.MutableVACM;
-import org.snmp4j.log.ConsoleLogAdapter;
 import org.snmp4j.log.ConsoleLogFactory;
 import org.snmp4j.log.LogFactory;
 import org.snmp4j.mp.MPv3;
@@ -36,7 +36,7 @@ public class TestSnmpV1Agent extends BaseAgent {
     }
 
     @Override
-    protected void initTransportMappings() throws IOException {
+    protected void initTransportMappings() {
         transportMappings = new TransportMapping[1];
         Address transportAddress = GenericAddress.parse(address);
         TransportMapping<? extends Address> transportMapping = TransportMappings.getInstance().createTransportMapping(transportAddress);
