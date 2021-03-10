@@ -26,6 +26,8 @@ import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.processor.Relationship;
+import org.apache.nifi.snmp.operations.SnmpSetter;
+import org.apache.nifi.snmp.utils.SnmpUtils;
 import org.snmp4j.PDU;
 import org.snmp4j.ScopedPDU;
 import org.snmp4j.event.ResponseEvent;
@@ -65,7 +67,8 @@ public class SetSnmp extends AbstractSnmpProcessor {
     private SnmpSetter snmpSetter;
 
     @OnScheduled
-    public void initSnmpGetter(ProcessContext context) {
+    public void initSnmpClient(ProcessContext context) {
+        super.initSnmpClient(context);
         snmpSetter = new SnmpSetter(snmpContext.getSnmp(), snmpContext.getTarget());
     }
 

@@ -2,7 +2,8 @@ package org.apache.nifi.snmp.context;
 
 import org.apache.nifi.snmp.configuration.BasicConfiguration;
 import org.apache.nifi.snmp.configuration.SecurityConfiguration;
-import org.apache.nifi.snmp.processors.SnmpUtils;
+import org.apache.nifi.snmp.exception.AgentSecurityConfigurationException;
+import org.apache.nifi.snmp.utils.SnmpUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.snmp4j.AbstractTarget;
@@ -11,6 +12,7 @@ import org.snmp4j.Snmp;
 import org.snmp4j.UserTarget;
 import org.snmp4j.mp.SnmpConstants;
 import org.snmp4j.security.SecurityLevel;
+import org.snmp4j.security.USM;
 import org.snmp4j.security.UsmUser;
 import org.snmp4j.smi.OctetString;
 import org.snmp4j.smi.UdpAddress;
@@ -30,7 +32,7 @@ public class SnmpContext {
     }
 
     public void init(final BasicConfiguration basicConfiguration, final SecurityConfiguration securityConfiguration) {
-        snmp = createSnmp();
+        initSnmp();
 
         final String snmpVersion = securityConfiguration.getVersion();
 
@@ -39,7 +41,7 @@ public class SnmpContext {
         if (version == SnmpConstants.version3) {
             createUserTarget(basicConfiguration, securityConfiguration, snmp, version);
         } else {
-            createCommunityTarget(basicConfiguration, securityConfiguration, version);
+            target = createCommunityTarget(basicConfiguration, securityConfiguration, version);
         }
     }
 
@@ -52,13 +54,14 @@ public class SnmpContext {
 
     }
 
-    private void createCommunityTarget(BasicConfiguration basicConfiguration, SecurityConfiguration securityConfiguration, int version) {
-        target = new CommunityTarget();
-        setupTargetBasicProperties(target, basicConfiguration, version);
+    private CommunityTarget createCommunityTarget(BasicConfiguration basicConfiguration, SecurityConfiguration securityConfiguration, int version) {
+        CommunityTarget communityTarget = new CommunityTarget();
+        setupTargetBasicProperties(communityTarget, basicConfiguration, version);
         String community = securityConfiguration.getCommunityString();
         if (community != null) {
-            ((CommunityTarget) target).setCommunity(new OctetString(community));
+            communityTarget.setCommunity(new OctetString(community));
         }
+        return communityTarget;
     }
 
     private void createUserTarget(BasicConfiguration basicConfiguration, SecurityConfiguration securityConfiguration, Snmp snmp, int version) {
@@ -69,6 +72,10 @@ public class SnmpContext {
         final String privacyPassword = securityConfiguration.getPrivacyPassword();
         final OctetString authPasswordOctet = authPassword != null ? new OctetString(authPassword) : null;
         final OctetString privacyPasswordOctet = privacyPassword != null ? new OctetString(privacyPassword) : null;
+
+        if (snmp.getUSM() == null) {
+            throw new AgentSecurityConfigurationException("No security model has been configured in agent.");
+        }
 
         // Add user information.
         snmp.getUSM().addUser(
@@ -87,9 +94,10 @@ public class SnmpContext {
         }
     }
 
-    private Snmp createSnmp() {
+    private void initSnmp() {
         try {
-            return new Snmp(new DefaultUdpTransportMapping());
+            snmp = new Snmp(new DefaultUdpTransportMapping());
+            snmp.listen();
         } catch (IOException e) {
             LOGGER.error("Could not create transport mapping", e);
             throw new RuntimeException("Transport mapping creation failure");

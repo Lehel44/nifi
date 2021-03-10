@@ -31,8 +31,8 @@ import org.apache.nifi.processor.Processor;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.nifi.snmp.operations.SnmpGetter;
+import org.apache.nifi.snmp.utils.SnmpUtils;
 import org.snmp4j.PDU;
 import org.snmp4j.event.ResponseEvent;
 import org.snmp4j.smi.OID;
@@ -106,7 +106,9 @@ public class GetSnmp extends AbstractSnmpProcessor {
     private SnmpGetter snmpGetter;
 
     @OnScheduled
-    public void initSnmpGetter(ProcessContext context) {
+    @Override
+    public void initSnmpClient(ProcessContext context) {
+        super.initSnmpClient(context);
         String oid = context.getProperty(OID).getValue();
         snmpGetter = new SnmpGetter(snmpContext.getSnmp(), snmpContext.getTarget(), new OID(oid));
     }

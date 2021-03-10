@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.nifi.snmp.processors;
+package org.apache.nifi.snmp.operations;
 
 import java.io.IOException;
 import java.util.List;
@@ -37,7 +37,7 @@ import org.snmp4j.util.TreeUtils;
 /**
  * Extension of {@link SnmpWorker} to perform SNMP Get and SNMP Walk requests.
  */
-final class SnmpGetter extends SnmpWorker {
+public final class SnmpGetter extends SnmpWorker {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SnmpGetter.class);
     private final OID oid;
@@ -49,7 +49,7 @@ final class SnmpGetter extends SnmpWorker {
      * @param target instance of {@link AbstractTarget} to request
      * @param oid    instance of {@link OID} to request
      */
-    SnmpGetter(Snmp snmp, AbstractTarget target, OID oid) {
+    public SnmpGetter(Snmp snmp, AbstractTarget target, OID oid) {
         super(snmp, target);
         this.oid = oid;
         LOGGER.info("Successfully initialized SNMP Getter");
