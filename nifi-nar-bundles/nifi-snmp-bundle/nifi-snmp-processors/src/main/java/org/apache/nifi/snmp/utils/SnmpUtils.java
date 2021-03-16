@@ -37,9 +37,9 @@ import java.util.regex.Pattern;
 /**
  * Utility helper class that simplifies interactions with target SNMP API and NIFI API.
  */
-public class SnmpUtils {
+public class SNMPUtils {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SnmpUtils.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SNMPUtils.class);
 
     public static final Pattern OID_PATTERN = Pattern.compile("[[0-9]+\\.]*");
 
@@ -292,17 +292,17 @@ public class SnmpUtils {
     public static boolean addVariables(PDU pdu, Map<String, String> attributes, ComponentLog logger) {
         boolean result = false;
         for (Map.Entry<String, String> attributeEntry : attributes.entrySet()) {
-            if (attributeEntry.getKey().startsWith(SnmpUtils.SNMP_PROP_PREFIX)) {
-                String[] splits = attributeEntry.getKey().split("\\" + SnmpUtils.SNMP_PROP_DELIMITER);
+            if (attributeEntry.getKey().startsWith(SNMPUtils.SNMP_PROP_PREFIX)) {
+                String[] splits = attributeEntry.getKey().split("\\" + SNMPUtils.SNMP_PROP_DELIMITER);
                 String snmpPropName = splits[1];
                 String snmpPropValue = attributeEntry.getValue();
-                if (SnmpUtils.OID_PATTERN.matcher(snmpPropName).matches()) {
+                if (SNMPUtils.OID_PATTERN.matcher(snmpPropName).matches()) {
                     Variable var;
                     if (splits.length == 2) { // no SMI syntax defined
                         var = new OctetString(snmpPropValue);
                     } else {
                         int smiSyntax = Integer.parseInt(splits[2]);
-                        var = SnmpUtils.stringToVariable(snmpPropValue, smiSyntax, logger);
+                        var = SNMPUtils.stringToVariable(snmpPropValue, smiSyntax, logger);
                     }
                     if (var != null) {
                         VariableBinding varBind = new VariableBinding(new OID(snmpPropName), var);
@@ -315,7 +315,7 @@ public class SnmpUtils {
         return result;
     }
 
-    private SnmpUtils() {
+    private SNMPUtils() {
         // hide implicit constructor
     }
 }

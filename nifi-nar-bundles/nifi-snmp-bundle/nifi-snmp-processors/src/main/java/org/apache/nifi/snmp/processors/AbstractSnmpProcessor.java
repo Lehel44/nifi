@@ -16,7 +16,6 @@
  */
 package org.apache.nifi.snmp.processors;
 
-import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.annotation.lifecycle.OnStopped;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.components.ValidationContext;
@@ -27,9 +26,9 @@ import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.snmp.configuration.BasicConfiguration;
 import org.apache.nifi.snmp.configuration.SecurityConfiguration;
 import org.apache.nifi.snmp.configuration.SecurityConfigurationBuilder;
-import org.apache.nifi.snmp.context.SnmpContext;
+import org.apache.nifi.snmp.context.SNMPContext;
 import org.apache.nifi.snmp.logging.Slf4jLogFactory;
-import org.apache.nifi.snmp.validators.OidValidator;
+import org.apache.nifi.snmp.validators.OIDValidator;
 import org.snmp4j.log.LogFactory;
 
 import java.util.*;
@@ -38,16 +37,26 @@ import java.util.*;
  * Base processor that uses SNMP4J client API.
  * (http://www.snmp4j.org/)
  */
-abstract class AbstractSnmpProcessor extends AbstractProcessor {
+abstract class AbstractSNMPProcessor extends AbstractProcessor {
 
     static {
         LogFactory.setLogFactory(new Slf4jLogFactory());
     }
 
     // Property to define the host of the SNMP agent.
-    public static final PropertyDescriptor HOST = new PropertyDescriptor.Builder()
-            .name("snmp-hostname")
-            .displayName("Hostname")
+    public static final PropertyDescriptor SNMP_CLIENT_PORT = new PropertyDescriptor.Builder()
+            .name("snmp-client-port")
+            .displayName("SNMP client (processor) port")
+            .description("The processor runs an SNMP client on localhost. The port however can be specified")
+            .required(true)
+            .defaultValue("0")
+            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+            .build();
+
+    // Property to define the host of the SNMP agent.
+    public static final PropertyDescriptor AGENT_HOST = new PropertyDescriptor.Builder()
+            .name("snmp-agent-hostname")
+            .displayName("SNMP agent hostname")
             .description("Network address of SNMP Agent (e.g., localhost)")
             .required(true)
             .defaultValue("localhost")
@@ -55,9 +64,9 @@ abstract class AbstractSnmpProcessor extends AbstractProcessor {
             .build();
 
     // Property to define the port of the SNMP agent.
-    public static final PropertyDescriptor PORT = new PropertyDescriptor.Builder()
-            .name("snmp-port")
-            .displayName("Port")
+    public static final PropertyDescriptor AGENT_PORT = new PropertyDescriptor.Builder()
+            .name("snmp-agent-port")
+            .displayName("SNMP agent port")
             .description("Numeric value identifying the port of SNMP Agent (e.g., 161)")
             .required(true)
             .defaultValue("161")
@@ -166,8 +175,9 @@ abstract class AbstractSnmpProcessor extends AbstractProcessor {
             .build();
 
     protected static final List<PropertyDescriptor> BASIC_PROPERTIES = Collections.unmodifiableList(Arrays.asList(
-            HOST,
-            PORT,
+            SNMP_CLIENT_PORT,
+            AGENT_HOST,
+            AGENT_PORT,
             SNMP_VERSION,
             SNMP_COMMUNITY,
             SNMP_SECURITY_LEVEL,
@@ -180,12 +190,13 @@ abstract class AbstractSnmpProcessor extends AbstractProcessor {
             SNMP_TIMEOUT
     ));
 
-    protected SnmpContext snmpContext;
+    protected SNMPContext snmpContext;
 
     public void initSnmpClient(ProcessContext context) {
         final BasicConfiguration basicConfiguration = new BasicConfiguration(
-                context.getProperty(HOST).getValue(),
-                context.getProperty(PORT).asInteger(),
+                context.getProperty(SNMP_CLIENT_PORT).asInteger(),
+                context.getProperty(AGENT_HOST).getValue(),
+                context.getProperty(AGENT_PORT).asInteger(),
                 context.getProperty(SNMP_RETRIES).asInteger(),
                 context.getProperty(SNMP_TIMEOUT).asInteger()
         );
@@ -201,7 +212,7 @@ abstract class AbstractSnmpProcessor extends AbstractProcessor {
                 .setCommunityString(context.getProperty(SNMP_COMMUNITY).getValue())
                 .createSecurityConfiguration();
 
-        snmpContext = SnmpContext.newInstance();
+        snmpContext = SNMPContext.newInstance();
         snmpContext.init(basicConfiguration, securityConfiguration);
     }
 
@@ -233,7 +244,7 @@ abstract class AbstractSnmpProcessor extends AbstractProcessor {
                 .setCommunityString(validationContext.getProperty(SNMP_COMMUNITY).getValue())
                 .createSecurityConfiguration();
 
-        OidValidator oidValidator = new OidValidator(securityConfiguration, problems);
+        OIDValidator oidValidator = new OIDValidator(securityConfiguration, problems);
         return oidValidator.validate();
     }
 }

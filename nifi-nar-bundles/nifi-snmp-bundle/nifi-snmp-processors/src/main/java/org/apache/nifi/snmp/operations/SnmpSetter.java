@@ -26,18 +26,18 @@ import org.snmp4j.Snmp;
 import org.snmp4j.event.ResponseEvent;
 
 /**
- * Extension of {@link SnmpWorker} to perform SNMP Set requests.
+ * Extension of {@link SNMPWorker} to perform SNMP Set requests.
  */
-public final class SnmpSetter extends SnmpWorker {
+public final class SNMPSetter extends SNMPWorker {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SnmpSetter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SNMPSetter.class);
 
     /**
      * Creates an instance of this setter.
      * @param snmp instance of {@link Snmp}
      * @param target instance of {@link AbstractTarget} to request
      */
-    public SnmpSetter(Snmp snmp, AbstractTarget target) {
+    public SNMPSetter(Snmp snmp, AbstractTarget target) {
         super(snmp, target);
         LOGGER.info("Successfully initialized SNMP Setter");
     }

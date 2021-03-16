@@ -31,8 +31,8 @@ import org.apache.nifi.processor.Processor;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
-import org.apache.nifi.snmp.operations.SnmpGetter;
-import org.apache.nifi.snmp.utils.SnmpUtils;
+import org.apache.nifi.snmp.operations.SNMPGetter;
+import org.apache.nifi.snmp.utils.SNMPUtils;
 import org.snmp4j.PDU;
 import org.snmp4j.event.ResponseEvent;
 import org.snmp4j.smi.OID;
@@ -50,12 +50,12 @@ import java.util.*;
 @InputRequirement(Requirement.INPUT_FORBIDDEN)
 @CapabilityDescription("Retrieves information from SNMP Agent and outputs a FlowFile with information in attributes and without any content")
 @WritesAttributes({
-        @WritesAttribute(attribute = SnmpUtils.SNMP_PROP_PREFIX + "*", description = "Attributes retrieved from the SNMP response. It may include:"
+        @WritesAttribute(attribute = SNMPUtils.SNMP_PROP_PREFIX + "*", description = "Attributes retrieved from the SNMP response. It may include:"
                 + " snmp$errorIndex, snmp$errorStatus, snmp$errorStatusText, snmp$nonRepeaters, snmp$requestID, snmp$type, snmp$variableBindings"),
-        @WritesAttribute(attribute = SnmpUtils.SNMP_PROP_PREFIX + "textualOid", description = "This attribute will exist if and only if the strategy"
+        @WritesAttribute(attribute = SNMPUtils.SNMP_PROP_PREFIX + "textualOid", description = "This attribute will exist if and only if the strategy"
                 + " is GET and will be equal to the value given in Textual Oid property.")
 })
-public class GetSnmp extends AbstractSnmpProcessor {
+public class GetSNMP extends AbstractSNMPProcessor {
 
     // OID to request (if walk, it is the root ID of the request).
     public static final PropertyDescriptor OID = new PropertyDescriptor.Builder()
@@ -103,14 +103,14 @@ public class GetSnmp extends AbstractSnmpProcessor {
             REL_FAILURE
     )));
 
-    private SnmpGetter snmpGetter;
+    private SNMPGetter snmpGetter;
 
     @OnScheduled
     @Override
     public void initSnmpClient(ProcessContext context) {
         super.initSnmpClient(context);
         String oid = context.getProperty(OID).getValue();
-        snmpGetter = new SnmpGetter(snmpContext.getSnmp(), snmpContext.getTarget(), new OID(oid));
+        snmpGetter = new SNMPGetter(snmpContext.getSnmp(), snmpContext.getTarget(), new OID(oid));
     }
 
     /**
@@ -148,7 +148,7 @@ public class GetSnmp extends AbstractSnmpProcessor {
             if (areValidEvents(events)) {
                 FlowFile flowFile = processSession.create();
                 for (TreeEvent treeEvent : events) {
-                    flowFile = SnmpUtils.updateFlowFileAttributesWithTreeEventProperties(treeEvent, flowFile, processSession);
+                    flowFile = SNMPUtils.updateFlowFileAttributesWithTreeEventProperties(treeEvent, flowFile, processSession);
                 }
                 processSession.getProvenanceReporter().receive(flowFile, targetUri + "/" + oid);
                 processSession.transfer(flowFile, REL_SUCCESS);
@@ -183,8 +183,8 @@ public class GetSnmp extends AbstractSnmpProcessor {
 
     private FlowFile createFlowFile(ProcessContext context, ProcessSession processSession, PDU pdu) {
         FlowFile flowFile = processSession.create();
-        flowFile = SnmpUtils.updateFlowFileAttributesWithPduProperties(pdu, flowFile, processSession);
-        flowFile = SnmpUtils.addAttribute(SnmpUtils.SNMP_PROP_PREFIX + "textualOid", context.getProperty(TEXTUAL_OID).getValue(),
+        flowFile = SNMPUtils.updateFlowFileAttributesWithPduProperties(pdu, flowFile, processSession);
+        flowFile = SNMPUtils.addAttribute(SNMPUtils.SNMP_PROP_PREFIX + "textualOid", context.getProperty(TEXTUAL_OID).getValue(),
                 flowFile, processSession);
         return flowFile;
     }

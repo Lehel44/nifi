@@ -23,8 +23,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.ProcessSession;
-import org.apache.nifi.snmp.processors.GetSnmp;
-import org.apache.nifi.snmp.utils.SnmpUtils;
+import org.apache.nifi.snmp.processors.GetSNMP;
 import org.apache.nifi.util.MockProcessSession;
 import org.apache.nifi.util.SharedSessionState;
 import org.junit.Test;
@@ -40,16 +39,16 @@ import org.snmp4j.smi.UdpAddress;
 import org.snmp4j.transport.DefaultUdpTransportMapping;
 
 /**
- * Test class for {@link SnmpUtils}.
+ * Test class for {@link SNMPUtils}.
  */
-public class SnmpUtilsTest {
+public class SNMPUtilsTest {
 
     /**
      * Test for updating attributes of flow files with {@link PDU}
      */
     @Test
     public void validateUpdateFlowFileAttributes() {
-        GetSnmp processor = new GetSnmp();
+        GetSNMP processor = new GetSNMP();
         ProcessSession processSession = new MockProcessSession(new SharedSessionState(processor, new AtomicLong()),
                 processor);
         FlowFile sourceFlowFile = processSession.create();
@@ -59,12 +58,12 @@ public class SnmpUtilsTest {
         pdu.setErrorStatus(0);
         pdu.setType(4);
 
-        FlowFile f2 = SnmpUtils.updateFlowFileAttributesWithPduProperties(pdu, sourceFlowFile,
+        FlowFile f2 = SNMPUtils.updateFlowFileAttributesWithPduProperties(pdu, sourceFlowFile,
                 processSession);
 
-        assertEquals("0", f2.getAttributes().get(SnmpUtils.SNMP_PROP_PREFIX + "errorIndex"));
-        assertEquals("0", f2.getAttributes().get(SnmpUtils.SNMP_PROP_PREFIX + "errorStatus"));
-        assertEquals("4", f2.getAttributes().get(SnmpUtils.SNMP_PROP_PREFIX + "type"));
+        assertEquals("0", f2.getAttributes().get(SNMPUtils.SNMP_PROP_PREFIX + "errorIndex"));
+        assertEquals("0", f2.getAttributes().get(SNMPUtils.SNMP_PROP_PREFIX + "errorStatus"));
+        assertEquals("4", f2.getAttributes().get(SNMPUtils.SNMP_PROP_PREFIX + "type"));
     }
 
     /**
