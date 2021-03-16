@@ -18,37 +18,25 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 
-public class TestSnmpV2Agent extends BaseAgent {
+public class TestSNMPV1Agent extends BaseAgent {
 
     static {
         LogFactory.setLogFactory(new ConsoleLogFactory());
         //ConsoleLogAdapter.setDebugEnabled(true);
     }
 
-    /**
-     * address
-     */
-    private String address;
-    /**
-     * port
-     */
-    private int port;
+    private final String address;
+    private final int port;
 
-    /**
-     * constructor
-     *
-     * @param address address
-     * @throws IOException IO Exception
-     */
-    public TestSnmpV2Agent(String address) throws IOException {
-        super(new File("target/bootCounter2.agent"), new File("target/conf2.agent"),
+    public TestSNMPV1Agent(final String address) {
+        super(new File("target/bootCounter1.agent"), new File("target/conf1.agent"),
                 new CommandProcessor(new OctetString(MPv3.createLocalEngineID())));
         port = SNMPTestUtil.availablePort();
         this.address = address + "/" + port;
     }
 
     @Override
-    protected void initTransportMappings() throws IOException {
+    protected void initTransportMappings() {
         transportMappings = new TransportMapping[1];
         Address transportAddress = GenericAddress.parse(address);
         TransportMapping<? extends Address> transportMapping = TransportMappings.getInstance().createTransportMapping(transportAddress);
@@ -100,7 +88,7 @@ public class TestSnmpV2Agent extends BaseAgent {
 
     @Override
     protected void addViews(VacmMIB vacmMIB) {
-        vacmMIB.addGroup(SecurityModel.SECURITY_MODEL_SNMPv2c,
+        vacmMIB.addGroup(SecurityModel.SECURITY_MODEL_SNMPv1,
                 new OctetString("cpublic"),
                 new OctetString("v1v2group"),
                 StorageType.nonVolatile);
@@ -151,5 +139,4 @@ public class TestSnmpV2Agent extends BaseAgent {
     public int getPort() {
         return port;
     }
-
 }

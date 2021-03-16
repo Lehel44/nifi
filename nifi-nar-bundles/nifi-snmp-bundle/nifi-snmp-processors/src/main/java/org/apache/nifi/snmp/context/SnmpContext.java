@@ -3,7 +3,7 @@ package org.apache.nifi.snmp.context;
 import org.apache.nifi.snmp.configuration.BasicConfiguration;
 import org.apache.nifi.snmp.configuration.SecurityConfiguration;
 import org.apache.nifi.snmp.exception.AgentSecurityConfigurationException;
-import org.apache.nifi.snmp.utils.SnmpUtils;
+import org.apache.nifi.snmp.utils.SNMPUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.snmp4j.AbstractTarget;
@@ -12,7 +12,6 @@ import org.snmp4j.Snmp;
 import org.snmp4j.UserTarget;
 import org.snmp4j.mp.SnmpConstants;
 import org.snmp4j.security.SecurityLevel;
-import org.snmp4j.security.USM;
 import org.snmp4j.security.UsmUser;
 import org.snmp4j.smi.OctetString;
 import org.snmp4j.smi.UdpAddress;
@@ -20,23 +19,23 @@ import org.snmp4j.transport.DefaultUdpTransportMapping;
 
 import java.io.IOException;
 
-public class SnmpContext {
+public class SNMPContext {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SnmpContext.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SNMPContext.class);
 
     private Snmp snmp;
     private AbstractTarget target;
 
-    public static SnmpContext newInstance() {
-        return new SnmpContext();
+    public static SNMPContext newInstance() {
+        return new SNMPContext();
     }
 
     public void init(final BasicConfiguration basicConfiguration, final SecurityConfiguration securityConfiguration) {
-        initSnmp();
+        initSnmp(basicConfiguration);
 
         final String snmpVersion = securityConfiguration.getVersion();
 
-        final int version = SnmpUtils.getSnmpVersion(snmpVersion);
+        final int version = SNMPUtils.getSnmpVersion(snmpVersion);
 
         if (version == SnmpConstants.version3) {
             createUserTarget(basicConfiguration, securityConfiguration, snmp, version);
@@ -80,8 +79,8 @@ public class SnmpContext {
         // Add user information.
         snmp.getUSM().addUser(
                 new OctetString(username),
-                new UsmUser(new OctetString(username), SnmpUtils.getAuth(authProtocol), authPasswordOctet,
-                        SnmpUtils.getPriv(privacyProtocol), privacyPasswordOctet));
+                new UsmUser(new OctetString(username), SNMPUtils.getAuth(authProtocol), authPasswordOctet,
+                        SNMPUtils.getPriv(privacyProtocol), privacyPasswordOctet));
 
         target = new UserTarget();
         setupTargetBasicProperties(target, basicConfiguration, version);
@@ -94,26 +93,26 @@ public class SnmpContext {
         }
     }
 
-    private void initSnmp() {
+    private void initSnmp(final BasicConfiguration basicConfiguration) {
+        int clientPort = basicConfiguration.getClientPort();
         try {
-            snmp = new Snmp(new DefaultUdpTransportMapping());
+            snmp = new Snmp(new DefaultUdpTransportMapping(new UdpAddress("0.0.0.0/" + clientPort)));
             snmp.listen();
         } catch (IOException e) {
             LOGGER.error("Could not create transport mapping", e);
-            throw new RuntimeException("Transport mapping creation failure");
         }
     }
 
-    private void setupTargetBasicProperties(AbstractTarget result, BasicConfiguration basicConfiguration, int version) {
+    private void setupTargetBasicProperties(AbstractTarget abstractTarget, BasicConfiguration basicConfiguration, int version) {
         final String host = basicConfiguration.getHost();
         final int port = basicConfiguration.getPort();
         final int retries = basicConfiguration.getRetries();
         final int timeout = basicConfiguration.getTimeout();
 
-        result.setVersion(version);
-        result.setAddress(new UdpAddress(host + "/" + port));
-        result.setRetries(retries);
-        result.setTimeout(timeout);
+        abstractTarget.setVersion(version);
+        abstractTarget.setAddress(new UdpAddress(host + "/" + port));
+        abstractTarget.setRetries(retries);
+        abstractTarget.setTimeout(timeout);
     }
 
     public Snmp getSnmp() {

@@ -1,9 +1,9 @@
 package org.apache.nifi.snmp.operations;
 
-import org.apache.nifi.snmp.testagents.TestSnmpV1Agent;
-import org.apache.nifi.snmp.testagents.TestSnmpV2Agent;
-import org.apache.nifi.snmp.testagents.TestSnmpV3Agent;
-import org.apache.nifi.snmp.utils.SnmpUtilsTest;
+import org.apache.nifi.snmp.testagents.TestSNMPV1Agent;
+import org.apache.nifi.snmp.testagents.TestSNMPV2Agent;
+import org.apache.nifi.snmp.testagents.TestSNMPV3Agent;
+import org.apache.nifi.snmp.utils.SNMPUtilsTest;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -23,11 +23,11 @@ import java.io.IOException;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
-public class SnmpSetterTest {
+public class SNMPSetterTest {
 
-    private static TestSnmpV1Agent snmpV1Agent;
-    private static TestSnmpV2Agent snmpV2Agent;
-    private static TestSnmpV3Agent snmpV3Agent;
+    private static TestSNMPV1Agent snmpV1Agent;
+    private static TestSNMPV2Agent snmpV2Agent;
+    private static TestSNMPV3Agent snmpV3Agent;
     private static final OID readOnlyOID = new OID("1.3.6.1.4.1.32437.1.5.1.4.2.0");
     private static final OID writeOnlyOID = new OID("1.3.6.1.4.1.32437.1.5.1.4.3.0");
     private static final String readOnlyOIDValue = "readOnlyOID";
@@ -36,19 +36,19 @@ public class SnmpSetterTest {
 
     @BeforeClass
     public static void setUp() throws IOException {
-        snmpV1Agent = new TestSnmpV1Agent("0.0.0.0");
+        snmpV1Agent = new TestSNMPV1Agent("0.0.0.0");
         snmpV1Agent.start();
         snmpV1Agent.registerManagedObjects(
                 DefaultMOFactory.getInstance().createScalar(new OID(readOnlyOID), MOAccessImpl.ACCESS_READ_ONLY, new OctetString(readOnlyOIDValue)),
                 DefaultMOFactory.getInstance().createScalar(new OID(writeOnlyOID), MOAccessImpl.ACCESS_WRITE_ONLY, new OctetString(writeOnlyOIDValue))
         );
-        snmpV2Agent = new TestSnmpV2Agent("0.0.0.0");
+        snmpV2Agent = new TestSNMPV2Agent("0.0.0.0");
         snmpV2Agent.start();
         snmpV2Agent.registerManagedObjects(
                 DefaultMOFactory.getInstance().createScalar(new OID(readOnlyOID), MOAccessImpl.ACCESS_READ_ONLY, new OctetString(readOnlyOIDValue)),
                 DefaultMOFactory.getInstance().createScalar(new OID(writeOnlyOID), MOAccessImpl.ACCESS_WRITE_ONLY, new OctetString(writeOnlyOIDValue))
         );
-        snmpV3Agent = new TestSnmpV3Agent("0.0.0.0");
+        snmpV3Agent = new TestSNMPV3Agent("0.0.0.0");
         snmpV3Agent.start();
         snmpV3Agent.registerManagedObjects(
                 DefaultMOFactory.getInstance().createScalar(new OID(readOnlyOID), MOAccessImpl.ACCESS_READ_ONLY, new OctetString(readOnlyOIDValue)),
@@ -65,10 +65,10 @@ public class SnmpSetterTest {
 
     @Test
     public void testSuccessfulSnmpV1Set() throws IOException, InterruptedException {
-        Snmp snmp = SnmpUtilsTest.createSnmp();
-        CommunityTarget target = SnmpUtilsTest.createCommTarget("public", "127.0.0.1/" + snmpV1Agent.getPort(), SnmpConstants.version1);
+        Snmp snmp = SNMPUtilsTest.createSnmp();
+        CommunityTarget target = SNMPUtilsTest.createCommTarget("public", "127.0.0.1/" + snmpV1Agent.getPort(), SnmpConstants.version1);
         String expectedOIDValue = "testValue";
-        try (SnmpSetter setter = new SnmpSetter(snmp, target)) {
+        try (SNMPSetter setter = new SNMPSetter(snmp, target)) {
             PDU pdu = new PDU();
             pdu.add(new VariableBinding(writeOnlyOID, new OctetString(expectedOIDValue)));
             pdu.setType(PDU.SET);
@@ -80,10 +80,10 @@ public class SnmpSetterTest {
 
     @Test
     public void testSuccessfulSnmpV2Set() throws IOException {
-        Snmp snmp = SnmpUtilsTest.createSnmp();
-        CommunityTarget target = SnmpUtilsTest.createCommTarget("public", "127.0.0.1/" + snmpV2Agent.getPort(), SnmpConstants.version2c);
+        Snmp snmp = SNMPUtilsTest.createSnmp();
+        CommunityTarget target = SNMPUtilsTest.createCommTarget("public", "127.0.0.1/" + snmpV2Agent.getPort(), SnmpConstants.version2c);
         String expectedOIDValue = "testValue";
-        try (SnmpSetter setter = new SnmpSetter(snmp, target)) {
+        try (SNMPSetter setter = new SNMPSetter(snmp, target)) {
             PDU pdu = new PDU();
             pdu.add(new VariableBinding(readOnlyOID, new OctetString(expectedOIDValue)));
             pdu.setType(PDU.SET);
@@ -95,11 +95,11 @@ public class SnmpSetterTest {
 
     @Test
     public void testSuccessfulSnmpV3Set() throws IOException {
-        Snmp snmp = SnmpUtilsTest.createSnmp();
-        final UserTarget userTarget = SnmpUtilsTest.prepareUser(snmp, "127.0.0.1/" + snmpV3Agent.getPort(), SecurityLevel.AUTH_NOPRIV,
+        Snmp snmp = SNMPUtilsTest.createSnmp();
+        final UserTarget userTarget = SNMPUtilsTest.prepareUser(snmp, "127.0.0.1/" + snmpV3Agent.getPort(), SecurityLevel.AUTH_NOPRIV,
                 "SHA", AuthSHA.ID, null, "SHAAuthPassword", null);
         String expectedOIDValue = "testValue";
-        try (SnmpSetter setter = new SnmpSetter(snmp, userTarget)) {
+        try (SNMPSetter setter = new SNMPSetter(snmp, userTarget)) {
             ScopedPDU pdu = new ScopedPDU();
             pdu.add(new VariableBinding(writeOnlyOID, new OctetString(expectedOIDValue)));
             pdu.setType(PDU.SET);
@@ -111,11 +111,11 @@ public class SnmpSetterTest {
 
     @Test
     public void testCannotSetReadOnlyObject() throws IOException {
-        Snmp snmp = SnmpUtilsTest.createSnmp();
-        final UserTarget userTarget = SnmpUtilsTest.prepareUser(snmp, "127.0.0.1/" + snmpV3Agent.getPort(), SecurityLevel.AUTH_NOPRIV,
+        Snmp snmp = SNMPUtilsTest.createSnmp();
+        final UserTarget userTarget = SNMPUtilsTest.prepareUser(snmp, "127.0.0.1/" + snmpV3Agent.getPort(), SecurityLevel.AUTH_NOPRIV,
                 "SHA", AuthSHA.ID, null, "SHAAuthPassword", null);
         String expectedOIDValue = "testValue";
-        try (SnmpSetter setter = new SnmpSetter(snmp, userTarget); SnmpGetter getter = new SnmpGetter(snmp, userTarget, readOnlyOID)) {
+        try (SNMPSetter setter = new SNMPSetter(snmp, userTarget); SNMPGetter getter = new SNMPGetter(snmp, userTarget, readOnlyOID)) {
             ScopedPDU pdu = new ScopedPDU();
             pdu.add(new VariableBinding(readOnlyOID, new OctetString(expectedOIDValue)));
             pdu.setType(PDU.SET);

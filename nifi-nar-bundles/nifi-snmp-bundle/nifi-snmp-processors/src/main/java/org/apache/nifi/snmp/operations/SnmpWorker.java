@@ -26,12 +26,12 @@ import org.snmp4j.Snmp;
 /**
  * Base class for implementing SNMP workers.
  *
- * @see SnmpSetter
- * @see SnmpGetter
+ * @see SNMPSetter
+ * @see SNMPGetter
  */
-abstract class SnmpWorker implements AutoCloseable {
+abstract class SNMPWorker implements AutoCloseable {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SnmpWorker.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SNMPWorker.class);
     protected final Snmp snmp;
     protected final AbstractTarget target;
 
@@ -42,7 +42,7 @@ abstract class SnmpWorker implements AutoCloseable {
      * @param snmp   instance of {@link Snmp}
      * @param target instance of {@link AbstractTarget}
      */
-    protected SnmpWorker(Snmp snmp, AbstractTarget target) {
+    protected SNMPWorker(Snmp snmp, AbstractTarget target) {
         this.snmp = snmp;
         this.target = target;
     }

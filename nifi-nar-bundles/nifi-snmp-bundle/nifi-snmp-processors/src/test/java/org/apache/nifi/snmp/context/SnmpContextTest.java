@@ -3,7 +3,8 @@ package org.apache.nifi.snmp.context;
 import org.apache.nifi.snmp.configuration.BasicConfiguration;
 import org.apache.nifi.snmp.configuration.SecurityConfiguration;
 import org.apache.nifi.snmp.configuration.SecurityConfigurationBuilder;
-import org.apache.nifi.snmp.testagents.TestSnmpV3Agent;
+import org.apache.nifi.snmp.helper.SNMPTestUtil;
+import org.apache.nifi.snmp.testagents.TestSNMPV3Agent;
 import org.junit.Test;
 import org.snmp4j.CommunityTarget;
 import org.snmp4j.TransportMapping;
@@ -16,13 +17,13 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertTrue;
 
-public class SnmpContextTest {
+public class SNMPContextTest {
 
-    private static final BasicConfiguration basicConfiguration = new BasicConfiguration("localhost", 3333, 1, 1000);
+    private static final BasicConfiguration basicConfiguration = new BasicConfiguration(SNMPTestUtil.availablePort(), "localhost", SNMPTestUtil.availablePort(), 1, 1000);
 
     @Test
     public void testSnmpV1CreatesCommunityTarget() {
-        SnmpContext snmpContext = SnmpContext.newInstance();
+        SNMPContext snmpContext = SNMPContext.newInstance();
         SecurityConfiguration securityConfiguration = new SecurityConfigurationBuilder()
                 .setVersion("SNMPv1")
                 .setSecurityLevel("noAuthNoPriv")
@@ -37,11 +38,13 @@ public class SnmpContextTest {
         snmpContext.init(basicConfiguration, securityConfiguration);
 
         assertThat(snmpContext.getTarget(), instanceOf(CommunityTarget.class));
+
+        snmpContext.close();
     }
 
     @Test
     public void testSnmpV2cCreatesCommunityTarget() {
-        SnmpContext snmpContext = SnmpContext.newInstance();
+        SNMPContext snmpContext = SNMPContext.newInstance();
         SecurityConfiguration securityConfiguration = new SecurityConfigurationBuilder()
                 .setVersion("SNMPv2c")
                 .setSecurityLevel("noAuthNoPriv")
@@ -56,15 +59,17 @@ public class SnmpContextTest {
         snmpContext.init(basicConfiguration, securityConfiguration);
 
         assertThat(snmpContext.getTarget(), instanceOf(CommunityTarget.class));
+
+        snmpContext.close();
     }
 
     @Test
     public void testSnmpV3CreatesUserTarget() throws IOException {
 
-        TestSnmpV3Agent snmpV3Agent = new TestSnmpV3Agent("0.0.0.0");
+        TestSNMPV3Agent snmpV3Agent = new TestSNMPV3Agent("0.0.0.0");
         snmpV3Agent.start();
 
-        SnmpContext snmpContext = SnmpContext.newInstance();
+        SNMPContext snmpContext = SNMPContext.newInstance();
         SecurityConfiguration securityConfiguration = new SecurityConfigurationBuilder()
                 .setVersion("SNMPv3")
                 .setSecurityLevel("authNoPriv")
@@ -81,11 +86,13 @@ public class SnmpContextTest {
         assertThat(snmpContext.getTarget(), instanceOf(UserTarget.class));
 
         snmpV3Agent.stop();
+
+        snmpContext.close();
     }
 
     @Test
     public void testResourcesClosed() {
-        SnmpContext snmpContext = SnmpContext.newInstance();
+        SNMPContext snmpContext = SNMPContext.newInstance();
         SecurityConfiguration securityConfiguration = new SecurityConfigurationBuilder()
                 .setVersion("SNMPv2c")
                 .setSecurityLevel("noAuthNoPriv")
@@ -105,5 +112,7 @@ public class SnmpContextTest {
         boolean isAllClosed = transportMappings.stream().noneMatch(TransportMapping::isListening);
 
         assertTrue(isAllClosed);
+
+        snmpContext.close();
     }
 }

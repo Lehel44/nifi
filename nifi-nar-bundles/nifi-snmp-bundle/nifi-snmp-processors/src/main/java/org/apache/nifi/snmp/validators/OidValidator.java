@@ -10,14 +10,14 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-public class OidValidator {
+public class OIDValidator {
 
     private static final String SNMP_V3 = "SNMPv3";
 
     private final SecurityConfiguration securityConfiguration;
     private final List<ValidationResult> problems;
 
-    public OidValidator(final SecurityConfiguration securityConfiguration, final List<ValidationResult> problems) {
+    public OIDValidator(final SecurityConfiguration securityConfiguration, final List<ValidationResult> problems) {
         this.securityConfiguration = securityConfiguration;
         this.problems = problems;
     }
