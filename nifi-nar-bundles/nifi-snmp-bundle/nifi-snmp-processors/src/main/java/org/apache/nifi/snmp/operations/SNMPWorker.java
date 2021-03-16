@@ -29,7 +29,7 @@ import org.snmp4j.Snmp;
  * @see SNMPSetter
  * @see SNMPGetter
  */
-abstract class SNMPWorker implements AutoCloseable {
+public abstract class SNMPWorker implements AutoCloseable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SNMPWorker.class);
     protected final Snmp snmp;

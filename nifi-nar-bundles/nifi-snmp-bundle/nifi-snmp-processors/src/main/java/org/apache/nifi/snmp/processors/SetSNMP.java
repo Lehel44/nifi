@@ -47,7 +47,7 @@ import java.util.*;
 @CapabilityDescription("Based on incoming FlowFile attributes, the processor will execute SNMP Set requests." +
         " When founding attributes with name like snmp$<OID>, the processor will atempt to set the value of" +
         " attribute to the corresponding OID given in the attribute name")
-public class SetSNMP extends AbstractSNMPProcessor {
+class SetSNMP extends AbstractSNMPProcessor {
 
     public static final Relationship REL_SUCCESS = new Relationship.Builder()
             .name("success")
