@@ -15,7 +15,6 @@ import org.snmp4j.security.SecurityLevel;
 import org.snmp4j.security.UsmUser;
 import org.snmp4j.smi.OctetString;
 import org.snmp4j.smi.UdpAddress;
-import org.snmp4j.transport.DefaultUdpTransportMapping;
 
 import java.io.IOException;
 
@@ -25,6 +24,7 @@ public class SNMPContext {
 
     private Snmp snmp;
     private AbstractTarget target;
+    private String clientPort;
 
     public static SNMPContext newInstance() {
         return new SNMPContext();
@@ -45,12 +45,14 @@ public class SNMPContext {
     }
 
     public void close() {
-        try {
-            snmp.close();
-        } catch (IOException e) {
-            LOGGER.error("Could not close SNMP session.");
+        if (clientPort != null) {
+            try {
+                snmp.close();
+                SNMPCache.clearCache(clientPort);
+            } catch (IOException e) {
+                LOGGER.error("Could not close SNMP context.");
+            }
         }
-
     }
 
     private CommunityTarget createCommunityTarget(BasicConfiguration basicConfiguration, SecurityConfiguration securityConfiguration, int version) {
@@ -94,9 +96,10 @@ public class SNMPContext {
     }
 
     private void initSnmp(final BasicConfiguration basicConfiguration) {
-        int clientPort = basicConfiguration.getClientPort();
+        String clientPort = basicConfiguration.getClientPort();
+        this.clientPort = clientPort;
         try {
-            snmp = new Snmp(new DefaultUdpTransportMapping(new UdpAddress("0.0.0.0/" + clientPort)));
+            snmp = SNMPCache.getOrCreate(clientPort);
             snmp.listen();
         } catch (IOException e) {
             LOGGER.error("Could not create transport mapping", e);
@@ -104,8 +107,8 @@ public class SNMPContext {
     }
 
     private void setupTargetBasicProperties(AbstractTarget abstractTarget, BasicConfiguration basicConfiguration, int version) {
-        final String host = basicConfiguration.getHost();
-        final int port = basicConfiguration.getPort();
+        final String host = basicConfiguration.getAgentHost();
+        final String port = basicConfiguration.getAgentPort();
         final int retries = basicConfiguration.getRetries();
         final int timeout = basicConfiguration.getTimeout();
 

@@ -9,9 +9,11 @@ import org.snmp4j.PDUv1;
 import org.snmp4j.Snmp;
 import org.snmp4j.event.ResponseEvent;
 import org.snmp4j.mp.SnmpConstants;
+import org.snmp4j.smi.Counter64;
 import org.snmp4j.smi.IpAddress;
 import org.snmp4j.smi.OID;
 import org.snmp4j.smi.OctetString;
+import org.snmp4j.smi.TimeTicks;
 import org.snmp4j.smi.VariableBinding;
 
 import java.io.IOException;
@@ -31,8 +33,8 @@ public class SNMPTrapSender extends SNMPWorker {
         super(snmp, target);
     }
 
-    public ResponseEvent generateTrap(String enterpriseOID, String agentAddress, int genericTrapType,
-                                      int specificTrapType, String trapOIDKey, String managerAddress, String trapOIDValue) {
+    public ResponseEvent generateTrap(TimeTicks sysUpTime, String enterpriseOID, String agentAddress, int genericTrapType,
+                                      int specificTrapType, OID trapOIDKey, String managerAddress, String trapOIDValue) {
         try {
             PDU pdu;
             if (target.getVersion() == SnmpConstants.version1) {
@@ -48,10 +50,10 @@ public class SNMPTrapSender extends SNMPWorker {
                 pdu2.setType(PDU.TRAP);
                 pdu = pdu2;
             }
-            pdu.add(new VariableBinding(SnmpConstants.sysUpTime));
-            pdu.add(new VariableBinding(SnmpConstants.snmpTrapOID, new OID(trapOIDKey)));
+            pdu.add(new VariableBinding(SnmpConstants.sysUpTime, sysUpTime));
+            pdu.add(new VariableBinding(SnmpConstants.snmpTrapOID, trapOIDKey));
             pdu.add(new VariableBinding(SnmpConstants.snmpTrapAddress, new IpAddress(managerAddress)));
-            pdu.add(new VariableBinding(new OID(trapOIDKey), new OctetString(trapOIDValue)));
+            pdu.add(new VariableBinding(trapOIDKey, new OctetString(trapOIDValue)));
 
             return snmp.send(pdu, target);
         } catch (IOException e) {

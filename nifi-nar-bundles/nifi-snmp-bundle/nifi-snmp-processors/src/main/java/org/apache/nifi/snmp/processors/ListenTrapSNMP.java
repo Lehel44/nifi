@@ -5,37 +5,37 @@ import org.apache.nifi.annotation.lifecycle.OnStopped;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
+import org.apache.nifi.processor.ProcessSessionFactory;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.util.StandardValidators;
+import org.apache.nifi.snmp.operations.SNMPGetter;
 import org.apache.nifi.snmp.operations.SNMPTrapReceiver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.snmp4j.PDU;
+import org.snmp4j.PDUv1;
 import org.snmp4j.Snmp;
+import org.snmp4j.smi.OID;
 import org.snmp4j.smi.UdpAddress;
+import org.snmp4j.smi.VariableBinding;
 import org.snmp4j.transport.DefaultUdpTransportMapping;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.Vector;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class ListenTrapSNMP extends AbstractSNMPProcessor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ListenTrapSNMP.class);
-
-    public static final PropertyDescriptor listenHostname = new PropertyDescriptor.Builder()
-            .name("snmp-trap-listen-hostname")
-            .displayName("The hostname of the SNMP trap listener.")
-            .description("The host where the processor listens to the trap messages")
-            .required(true)
-            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-            .build();
-
-    public static final PropertyDescriptor listenPort = new PropertyDescriptor.Builder()
-            .name("snmp-trap-listen-port")
-            .displayName("The port of the SNMP trap listener.")
-            .description("The host where the processor listens to the trap messages")
-            .required(true)
-            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-            .build();
 
     public static final Relationship REL_SUCCESS = new Relationship.Builder()
             .name("success")
@@ -47,6 +47,8 @@ public class ListenTrapSNMP extends AbstractSNMPProcessor {
             .description("All FlowFiles that cannot received from the SNMP agent are routed to this relationship")
             .build();
 
+    private static final List<PropertyDescriptor> PROPERTY_DESCRIPTORS = createPropertyList();
+
     private static final Set<Relationship> RELATIONSHIPS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
             REL_SUCCESS,
             REL_FAILURE
@@ -57,38 +59,40 @@ public class ListenTrapSNMP extends AbstractSNMPProcessor {
     @OnScheduled
     @Override
     public void initSnmpClient(ProcessContext context) {
-        String host = context.getProperty(listenHostname).toString();
-        String port = context.getProperty(listenPort).toString();
-        Snmp snmp = snmpContext.getSnmp();
-        try {
-            snmp.addTransportMapping(new DefaultUdpTransportMapping(new UdpAddress(host + "/" + port)));
-            trapReceiver = new SNMPTrapReceiver(snmp);
-        } catch (IOException e) {
-            LOGGER.error("Could not initialize SNMP client.", e);
-        }
+        super.initSnmpClient(context);
     }
 
     @OnStopped
     public void stopSnmpClient(ProcessContext context) {
-        try {
-            trapReceiver.closeReceiver(snmpContext.getSnmp());
-        } catch (IOException e) {
-            LOGGER.error("Could not close trap receiver and SNMP client.", e);
-        }
+        snmpContext.close();
+        trapReceiver = null;
     }
 
     @Override
     public void onTrigger(ProcessContext context, ProcessSession session) {
-        // The processor passively listens to traps. See SnmpTrapReceiver::processPDU.
+        if (Objects.isNull(trapReceiver)) {
+            try {
+                trapReceiver = new SNMPTrapReceiver(snmpContext.getSnmp(), context, session, getLogger());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     @Override
     protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
-        return BASIC_PROPERTIES;
+        return PROPERTY_DESCRIPTORS;
     }
 
     @Override
     public Set<Relationship> getRelationships() {
         return RELATIONSHIPS;
+    }
+
+    private static List<PropertyDescriptor> createPropertyList() {
+        List<PropertyDescriptor> propertyDescriptors = new ArrayList<>();
+        propertyDescriptors.addAll(BASIC_PROPERTIES);
+        //propertyDescriptors.addAll(Arrays.asList(LISTEN_HOSTNAME, LISTEN_PORT));
+        return Collections.unmodifiableList(propertyDescriptors);
     }
 }

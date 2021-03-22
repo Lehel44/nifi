@@ -19,7 +19,7 @@ import static org.junit.Assert.assertTrue;
 
 public class SNMPContextTest {
 
-    private static final BasicConfiguration basicConfiguration = new BasicConfiguration(SNMPTestUtil.availablePort(), "localhost", SNMPTestUtil.availablePort(), 1, 1000);
+    private static final BasicConfiguration basicConfiguration = new BasicConfiguration(String.valueOf(SNMPTestUtil.availablePort()), "localhost", String.valueOf(SNMPTestUtil.availablePort()), 1, 1000);
 
     @Test
     public void testSnmpV1CreatesCommunityTarget() {

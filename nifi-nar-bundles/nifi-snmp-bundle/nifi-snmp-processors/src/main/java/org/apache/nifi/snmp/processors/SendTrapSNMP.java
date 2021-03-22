@@ -9,6 +9,8 @@ import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.snmp.operations.SNMPTrapSender;
+import org.snmp4j.smi.OID;
+import org.snmp4j.smi.TimeTicks;
 
 import java.util.*;
 
@@ -72,6 +74,14 @@ public class SendTrapSNMP extends AbstractSNMPProcessor {
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
 
+    public static final PropertyDescriptor sysUpTime = new PropertyDescriptor.Builder()
+            .name("snmp-trap-sysUpTime")
+            .displayName("System uptime")
+            .description("The system uptime.")
+            .required(true)
+            .addValidator(StandardValidators.INTEGER_VALIDATOR)
+            .build();
+
     public static final Relationship REL_SUCCESS = new Relationship.Builder()
             .name("success")
             .description("All FlowFiles that are received from the SNMP agent are routed to this relationship")
@@ -116,9 +126,10 @@ public class SendTrapSNMP extends AbstractSNMPProcessor {
         final String trapOIDKey = context.getProperty(trapOID).getValue();
         final String managerAddressValue = context.getProperty(managerAddress).getValue();
         final String trapOIDValueValue = context.getProperty(trapOIDValue).getValue();
+        final int sysUpTimeValue = context.getProperty(sysUpTime).asInteger();
 
-        snmpTrapSender.generateTrap(enterpriseOIDValue, agentAddressValue, genericTrapTypeValue, specificTrapTypeValue,
-                trapOIDKey, managerAddressValue, trapOIDValueValue);
+        snmpTrapSender.generateTrap(new TimeTicks(sysUpTimeValue), enterpriseOIDValue, agentAddressValue, genericTrapTypeValue, specificTrapTypeValue,
+                new OID(trapOIDKey), managerAddressValue, trapOIDValueValue);
     }
 
     @Override
@@ -140,7 +151,7 @@ public class SendTrapSNMP extends AbstractSNMPProcessor {
         List<PropertyDescriptor> propertyDescriptors = new ArrayList<>();
         propertyDescriptors.addAll(BASIC_PROPERTIES);
         propertyDescriptors.addAll(Arrays.asList(enterpriseOID, agentAddress, genericTrapType, specificTrapType,
-                trapOID, managerAddress, trapOIDValue));
+                trapOID, managerAddress, trapOIDValue, sysUpTime));
         return Collections.unmodifiableList(propertyDescriptors);
     }
 

@@ -1,27 +1,61 @@
 package org.apache.nifi.snmp.operations;
 
+import org.apache.nifi.flowfile.FlowFile;
+import org.apache.nifi.logging.ComponentLog;
+import org.apache.nifi.processor.ProcessContext;
+import org.apache.nifi.processor.ProcessSession;
+import org.apache.nifi.snmp.utils.SNMPUtils;
 import org.snmp4j.*;
 import org.snmp4j.smi.VariableBinding;
 
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.Vector;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+
+import static org.apache.nifi.snmp.processors.ListenTrapSNMP.REL_SUCCESS;
+import static org.apache.nifi.snmp.processors.ListenTrapSNMP.REL_FAILURE;
 
 public class SNMPTrapReceiver implements CommandResponder {
 
-    public SNMPTrapReceiver(Snmp snmp) throws IOException {
-        snmp.listen();
+    private final Snmp snmp;
+    private final ProcessContext context;
+    private final ProcessSession processSession;
+    private final ComponentLog logger;
+
+    public SNMPTrapReceiver(final Snmp snmp, final ProcessContext context, final ProcessSession processSession, final ComponentLog logger) throws IOException {
+        this.snmp = snmp;
+        this.context = context;
+        this.processSession = processSession;
+        this.logger = logger;
         snmp.addCommandResponder(this);
     }
 
-    public void closeReceiver(Snmp snmp) throws IOException {
+    public void closeReceiver() {
         snmp.removeCommandResponder(this);
-        snmp.close();
     }
 
     @Override
     public void processPdu(CommandResponderEvent event) {
         PDU pdu = event.getPDU();
+        // check trap PDU, does it catch snmp get?
+        if (pdu != null) {
+            FlowFile flowFile = createFlowFile(context, processSession, pdu);
+            processSession.getProvenanceReporter().receive(flowFile, event.getPeerAddress() + "/" + pdu.getRequestID());
+            if (pdu.getErrorStatus() == PDU.noError) {
+                processSession.transfer(flowFile, REL_SUCCESS);
+            } else {
+                processSession.transfer(flowFile, REL_FAILURE);
+            }
+        } else {
+            logger.error("Get request timed out or parameters are incorrect.");
+            context.yield();
+        }
+
         if (pdu.getType() == PDU.V1TRAP) {
 
             PDUv1 pduV1 = (PDUv1) pdu;
@@ -71,4 +105,15 @@ public class SNMPTrapReceiver implements CommandResponder {
         System.out.println("");
     }
 
+    private FlowFile createFlowFile(ProcessContext context, ProcessSession processSession, PDU pdu) {
+        FlowFile flowFile = processSession.create();
+        flowFile = SNMPUtils.updateFlowFileAttributesWithPduProperties(pdu, flowFile, processSession);
+        //flowFile = SNMPUtils.addAttribute(SNMPUtils.SNMP_PROP_PREFIX + "textualOid", context.getProperty(TEXTUAL_OID).getValue(),
+        //        flowFile, processSession);
+        return flowFile;
+    }
+
+    public Snmp getSnmp() {
+        return snmp;
+    }
 }

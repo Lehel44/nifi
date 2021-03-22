@@ -194,9 +194,9 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
 
     public void initSnmpClient(ProcessContext context) {
         final BasicConfiguration basicConfiguration = new BasicConfiguration(
-                context.getProperty(SNMP_CLIENT_PORT).asInteger(),
+                context.getProperty(SNMP_CLIENT_PORT).toString(),
                 context.getProperty(AGENT_HOST).getValue(),
-                context.getProperty(AGENT_PORT).asInteger(),
+                context.getProperty(AGENT_PORT).toString(),
                 context.getProperty(SNMP_RETRIES).asInteger(),
                 context.getProperty(SNMP_TIMEOUT).asInteger()
         );
