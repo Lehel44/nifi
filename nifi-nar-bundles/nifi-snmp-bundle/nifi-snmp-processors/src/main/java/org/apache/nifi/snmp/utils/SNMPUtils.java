@@ -22,7 +22,6 @@ import org.apache.nifi.processor.ProcessSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.snmp4j.PDU;
-import org.snmp4j.mp.SnmpConstants;
 import org.snmp4j.security.AuthMD5;
 import org.snmp4j.security.AuthSHA;
 import org.snmp4j.security.Priv3DES;

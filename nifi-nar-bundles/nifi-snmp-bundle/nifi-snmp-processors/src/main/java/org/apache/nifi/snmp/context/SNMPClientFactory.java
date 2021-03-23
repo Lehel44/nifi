@@ -19,6 +19,7 @@ package org.apache.nifi.snmp.context;
 import org.apache.nifi.snmp.configuration.TargetConfiguration;
 import org.apache.nifi.snmp.exception.CreateSNMPClientException;
 import org.apache.nifi.snmp.utils.SNMPUtils;
+import org.apache.nifi.snmp.utils.SNMPVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.snmp4j.Snmp;
@@ -45,7 +46,7 @@ public class SNMPClientFactory {
     }
 
     public static Snmp createSnmpClient(TargetConfiguration configuration, String clientPort) {
-        final int snmpVersion = SNMPUtils.getSnmpVersion(configuration.getVersion());
+        final int snmpVersion = SNMPVersion.getSnmpVersionNumberByDisplay(configuration.getVersion());
         if (SnmpConstants.version3 == snmpVersion) {
             return createSnmpV3Client(configuration, clientPort);
         } else {

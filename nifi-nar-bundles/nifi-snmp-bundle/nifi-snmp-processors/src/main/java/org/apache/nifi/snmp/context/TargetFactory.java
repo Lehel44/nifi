@@ -17,7 +17,7 @@
 package org.apache.nifi.snmp.context;
 
 import org.apache.nifi.snmp.configuration.TargetConfiguration;
-import org.apache.nifi.snmp.utils.SNMPUtils;
+import org.apache.nifi.snmp.utils.SNMPVersion;
 import org.snmp4j.AbstractTarget;
 import org.snmp4j.CommunityTarget;
 import org.snmp4j.UserTarget;
@@ -31,7 +31,7 @@ import java.util.Optional;
 public class TargetFactory {
 
     public static AbstractTarget createTarget(TargetConfiguration configuration) {
-        final int snmpVersion = SNMPUtils.getSnmpVersion(configuration.getVersion());
+        final int snmpVersion = SNMPVersion.getSnmpVersionNumberByDisplay(configuration.getVersion());
         if (SnmpConstants.version3 == snmpVersion) {
             return createUserTarget(configuration);
         } else {
@@ -63,7 +63,7 @@ public class TargetFactory {
     }
 
     private static void setupTargetBasicProperties(AbstractTarget target, TargetConfiguration configuration) {
-        final int snmpVersion = SNMPUtils.getSnmpVersion(configuration.getVersion());
+        final int snmpVersion = SNMPVersion.getSnmpVersionNumberByDisplay(configuration.getVersion());
         final String host = configuration.getAgentHost();
         final String port = configuration.getAgentPort();
         final int retries = configuration.getRetries();
