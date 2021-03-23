@@ -14,53 +14,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.nifi.snmp.processors;
+package org.apache.nifi.snmp.operations;
 
-import java.io.IOException;
-import java.util.concurrent.TimeoutException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.snmp4j.AbstractTarget;
 import org.snmp4j.Snmp;
 
 /**
- * Base class for implementing SNMP workers.
+ * Base class for implementing SNMP operations.
  *
  * @see SNMPSetter
  * @see SNMPGetter
  */
-abstract class SNMPWorker implements AutoCloseable {
+public abstract class SNMPRequest {
 
-    /** logger */
-    private final static Logger logger = LoggerFactory.getLogger(SNMPWorker.class);
-
-    /** SNMP abstraction */
     protected final Snmp snmp;
-
-    /** Target to request */
     protected final AbstractTarget target;
 
     /**
-     * Creates an instance of this worker and initializing it with {@link Snmp}
+     * Creates an instance of this request and initializing it with {@link Snmp}
      * and {@link AbstractTarget} used by sub-classes to interact with SNMP agent.
-     * @param snmp instance of {@link Snmp}
+     *
+     * @param snmp   instance of {@link Snmp}
      * @param target instance of {@link AbstractTarget}
      */
-    public SNMPWorker(Snmp snmp, AbstractTarget target) {
+    protected SNMPRequest(Snmp snmp, AbstractTarget target) {
         this.snmp = snmp;
         this.target = target;
-    }
-
-    /**
-     * Closes {@link Snmp} created when instance of this class was created.
-     */
-    @Override
-    public void close() throws TimeoutException, IOException {
-        if (logger.isDebugEnabled()) {
-            logger.debug("Closing SNMP connection");
-        }
-        this.snmp.close();
     }
 
     /**
@@ -68,7 +47,7 @@ abstract class SNMPWorker implements AutoCloseable {
      */
     @Override
     public String toString() {
-        return this.getClass().getSimpleName() + ":" + this.snmp.toString();
+        return getClass().getSimpleName() + ":" + snmp.toString();
     }
 
 }

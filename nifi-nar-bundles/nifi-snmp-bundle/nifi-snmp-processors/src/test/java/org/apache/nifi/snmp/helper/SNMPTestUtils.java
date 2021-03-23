@@ -14,20 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.nifi.snmp.processors;
+package org.apache.nifi.snmp.helper;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.IOException;
-import java.util.concurrent.atomic.AtomicLong;
-
-import org.apache.nifi.flowfile.FlowFile;
-import org.apache.nifi.processor.ProcessSession;
-import org.apache.nifi.util.MockProcessSession;
-import org.apache.nifi.util.SharedSessionState;
-import org.junit.Test;
 import org.snmp4j.CommunityTarget;
-import org.snmp4j.PDU;
 import org.snmp4j.Snmp;
 import org.snmp4j.UserTarget;
 import org.snmp4j.mp.SnmpConstants;
@@ -37,40 +26,17 @@ import org.snmp4j.smi.OctetString;
 import org.snmp4j.smi.UdpAddress;
 import org.snmp4j.transport.DefaultUdpTransportMapping;
 
-/**
- * Test class for {@link SNMPUtils}.
- */
-public class SNMPUtilsTest {
+import java.io.IOException;
 
-    /**
-     * Test for updating attributes of flow files with {@link PDU}
-     */
-    @Test
-    public void validateUpdateFlowFileAttributes() {
-        GetSNMP processor = new GetSNMP();
-        ProcessSession processSession = new MockProcessSession(new SharedSessionState(processor, new AtomicLong()),
-                processor);
-        FlowFile sourceFlowFile = processSession.create();
-
-        PDU pdu = new PDU();
-        pdu.setErrorIndex(0);
-        pdu.setErrorStatus(0);
-        pdu.setType(4);
-
-        FlowFile f2 = SNMPUtils.updateFlowFileAttributesWithPduProperties(pdu, sourceFlowFile,
-                processSession);
-
-        assertEquals("0", f2.getAttributes().get(SNMPUtils.SNMP_PROP_PREFIX + "errorIndex"));
-        assertEquals("0", f2.getAttributes().get(SNMPUtils.SNMP_PROP_PREFIX + "errorStatus"));
-        assertEquals("4", f2.getAttributes().get(SNMPUtils.SNMP_PROP_PREFIX + "type"));
-    }
+public class SNMPTestUtils {
 
     /**
      * Method to create an instance of SNMP
+     *
      * @return instance of SNMP
      * @throws IOException IO Exception
      */
-    protected static Snmp createSnmp() throws IOException {
+    public static Snmp createSnmp() throws IOException {
         DefaultUdpTransportMapping transportMapping = new DefaultUdpTransportMapping();
         transportMapping.listen();
         return new Snmp(transportMapping);
@@ -78,12 +44,13 @@ public class SNMPUtilsTest {
 
     /**
      * Method to create community target
+     *
      * @param community community name
-     * @param address address
-     * @param version SNMP version
+     * @param address   address
+     * @param version   SNMP version
      * @return community target
      */
-    protected static CommunityTarget createCommTarget(String community, String address, int version) {
+    public static CommunityTarget createCommTarget(String community, String address, int version) {
         CommunityTarget target = new CommunityTarget();
         target.setVersion(version);
         target.setCommunity(new OctetString(community));
@@ -95,12 +62,13 @@ public class SNMPUtilsTest {
 
     /**
      * Method to create a user target
-     * @param address address
+     *
+     * @param address       address
      * @param securityLevel security level
-     * @param securityName security name
+     * @param securityName  security name
      * @return user target
      */
-    private static UserTarget createUserTarget(String address, int securityLevel, String securityName) {
+    public static UserTarget createUserTarget(String address, int securityLevel, String securityName) {
         UserTarget target = new UserTarget();
         target.setVersion(SnmpConstants.version3);
         target.setSecurityLevel(securityLevel);
@@ -113,17 +81,18 @@ public class SNMPUtilsTest {
 
     /**
      * Method to prepare user target and to add id in the User Based Security Model of the given SNMP instance
-     * @param snmp SNMP instance
-     * @param address address
+     *
+     * @param snmp          SNMP instance
+     * @param address       address
      * @param securityLevel security level
-     * @param securityName security name
-     * @param auth authentication protocol
-     * @param priv private protocol
-     * @param authPwd authentication password
-     * @param privPwd private password
+     * @param securityName  security name
+     * @param auth          authentication protocol
+     * @param priv          private protocol
+     * @param authPwd       authentication password
+     * @param privPwd       private password
      * @return user target
      */
-    protected static UserTarget prepareUser(Snmp snmp, String address, int securityLevel, String securityName, OID auth, OID priv, String authPwd, String privPwd) {
+    public static UserTarget prepareUser(Snmp snmp, String address, int securityLevel, String securityName, OID auth, OID priv, String authPwd, String privPwd) {
         snmp.getUSM().removeAllUsers();
         OctetString aPwd = authPwd != null ? new OctetString(authPwd) : null;
         OctetString pPwd = privPwd != null ? new OctetString(privPwd) : null;
