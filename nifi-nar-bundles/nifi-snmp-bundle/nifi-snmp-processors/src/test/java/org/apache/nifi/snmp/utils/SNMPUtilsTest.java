@@ -16,27 +16,17 @@
  */
 package org.apache.nifi.snmp.utils;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.IOException;
-import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.snmp.processors.GetSNMP;
 import org.apache.nifi.util.MockProcessSession;
 import org.apache.nifi.util.SharedSessionState;
 import org.junit.Test;
-import org.snmp4j.CommunityTarget;
 import org.snmp4j.PDU;
-import org.snmp4j.Snmp;
-import org.snmp4j.UserTarget;
-import org.snmp4j.mp.SnmpConstants;
-import org.snmp4j.security.UsmUser;
-import org.snmp4j.smi.OID;
-import org.snmp4j.smi.OctetString;
-import org.snmp4j.smi.UdpAddress;
-import org.snmp4j.transport.DefaultUdpTransportMapping;
+
+import java.util.concurrent.atomic.AtomicLong;
+
+import static org.junit.Assert.assertEquals;
 
 /**
  * Test class for {@link SNMPUtils}.
@@ -65,71 +55,4 @@ public class SNMPUtilsTest {
         assertEquals("0", f2.getAttributes().get(SNMPUtils.SNMP_PROP_PREFIX + "errorStatus"));
         assertEquals("4", f2.getAttributes().get(SNMPUtils.SNMP_PROP_PREFIX + "type"));
     }
-
-    /**
-     * Method to create an instance of SNMP
-     * @return instance of SNMP
-     * @throws IOException IO Exception
-     */
-    public static Snmp createSnmp() throws IOException {
-        DefaultUdpTransportMapping transportMapping = new DefaultUdpTransportMapping();
-        transportMapping.listen();
-        return new Snmp(transportMapping);
-    }
-
-    /**
-     * Method to create community target
-     * @param community community name
-     * @param address address
-     * @param version SNMP version
-     * @return community target
-     */
-    public static CommunityTarget createCommTarget(String community, String address, int version) {
-        CommunityTarget target = new CommunityTarget();
-        target.setVersion(version);
-        target.setCommunity(new OctetString(community));
-        target.setAddress(new UdpAddress(address));
-        target.setRetries(0);
-        target.setTimeout(500);
-        return target;
-    }
-
-    /**
-     * Method to create a user target
-     * @param address address
-     * @param securityLevel security level
-     * @param securityName security name
-     * @return user target
-     */
-    public static UserTarget createUserTarget(String address, int securityLevel, String securityName) {
-        UserTarget target = new UserTarget();
-        target.setVersion(SnmpConstants.version3);
-        target.setSecurityLevel(securityLevel);
-        target.setSecurityName(new OctetString(securityName));
-        target.setAddress(new UdpAddress(address));
-        target.setRetries(0);
-        target.setTimeout(500);
-        return target;
-    }
-
-    /**
-     * Method to prepare user target and to add id in the User Based Security Model of the given SNMP instance
-     * @param snmp SNMP instance
-     * @param address address
-     * @param securityLevel security level
-     * @param securityName security name
-     * @param auth authentication protocol
-     * @param priv private protocol
-     * @param authPwd authentication password
-     * @param privPwd private password
-     * @return user target
-     */
-    public static UserTarget prepareUser(Snmp snmp, String address, int securityLevel, String securityName, OID auth, OID priv, String authPwd, String privPwd) {
-        snmp.getUSM().removeAllUsers();
-        OctetString aPwd = authPwd != null ? new OctetString(authPwd) : null;
-        OctetString pPwd = privPwd != null ? new OctetString(privPwd) : null;
-        snmp.getUSM().addUser(new OctetString(securityName), new UsmUser(new OctetString(securityName), auth, aPwd, priv, pPwd));
-        return createUserTarget(address, securityLevel, securityName);
-    }
-
 }

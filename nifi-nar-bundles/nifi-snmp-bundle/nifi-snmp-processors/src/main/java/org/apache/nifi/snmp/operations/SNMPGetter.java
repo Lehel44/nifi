@@ -16,9 +16,6 @@
  */
 package org.apache.nifi.snmp.operations;
 
-import java.io.IOException;
-import java.util.List;
-
 import org.apache.nifi.processor.exception.ProcessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,10 +31,13 @@ import org.snmp4j.util.DefaultPDUFactory;
 import org.snmp4j.util.TreeEvent;
 import org.snmp4j.util.TreeUtils;
 
+import java.io.IOException;
+import java.util.List;
+
 /**
- * Extension of {@link SNMPWorker} to perform SNMP Get and SNMP Walk requests.
+ * Extension of {@link SNMPRequest} to perform SNMP Get and SNMP Walk requests.
  */
-public final class SNMPGetter extends SNMPWorker {
+public final class SNMPGetter extends SNMPRequest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SNMPGetter.class);
     private final OID oid;
@@ -90,7 +90,7 @@ public final class SNMPGetter extends SNMPWorker {
     }
 
     /**
-     * @see SNMPWorker#toString()
+     * @see SNMPRequest#toString()
      */
     @Override
     public String toString() {

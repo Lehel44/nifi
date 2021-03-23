@@ -27,37 +27,27 @@ import java.io.Serializable;
 import java.util.Iterator;
 import java.util.logging.Handler;
 
-/**
- * The <code>JavaLogAdapter</code> log adapter provides logging for SNMP4J
- * through the Java logging (<code>java.util.logging</code>).
- *
- * @author Frank Fock
- * @version 1.9.1
- * @since 1.7.2
- */
-public class Slf4jLogAdapter implements LogAdapter {
+public class SLF4JLogAdapter implements LogAdapter {
 
     private final Logger logger;
 
-    public Slf4jLogAdapter(Logger logger) {
+    public SLF4JLogAdapter(Logger logger) {
         this.logger = logger;
     }
 
-    // ---- Checking methods
 
     public boolean isDebugEnabled() {
-        return true;
+        return logger.isDebugEnabled();
     }
 
     public boolean isInfoEnabled() {
-        return true;
+        return logger.isInfoEnabled();
     }
 
     public boolean isWarnEnabled() {
-        return true;
+        return logger.isWarnEnabled();
     }
 
-    // ---- Logging methods
 
     public void debug(Serializable message) {
         log(LogLevel.DEBUG, message.toString(), null);
@@ -87,7 +77,6 @@ public class Slf4jLogAdapter implements LogAdapter {
         log(LogLevel.FATAL, message.toString(), t);
     }
 
-    // ---- Public methods
 
     public LogLevel getEffectiveLogLevel() {
         return LogLevel.ALL;
@@ -108,8 +97,6 @@ public class Slf4jLogAdapter implements LogAdapter {
     public void setLogLevel(LogLevel logLevel) {
         // no need to set log level
     }
-
-    // ---- Private methods
 
     private void log(LogLevel logLevel, String msg, Throwable t) {
         if (logLevel == LogLevel.ERROR || logLevel == LogLevel.FATAL) {

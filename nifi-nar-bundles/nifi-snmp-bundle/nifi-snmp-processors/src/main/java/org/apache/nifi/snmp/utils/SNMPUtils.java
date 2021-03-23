@@ -16,8 +16,6 @@
  */
 package org.apache.nifi.snmp.utils;
 
-import org.apache.nifi.components.ValidationResult;
-import org.apache.nifi.components.Validator;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.logging.ComponentLog;
 import org.apache.nifi.processor.ProcessSession;
@@ -25,13 +23,30 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.snmp4j.PDU;
 import org.snmp4j.mp.SnmpConstants;
-import org.snmp4j.security.*;
-import org.snmp4j.smi.*;
+import org.snmp4j.security.AuthMD5;
+import org.snmp4j.security.AuthSHA;
+import org.snmp4j.security.Priv3DES;
+import org.snmp4j.security.PrivAES128;
+import org.snmp4j.security.PrivAES192;
+import org.snmp4j.security.PrivAES256;
+import org.snmp4j.security.PrivDES;
+import org.snmp4j.smi.AbstractVariable;
+import org.snmp4j.smi.AssignableFromInteger;
+import org.snmp4j.smi.AssignableFromLong;
+import org.snmp4j.smi.AssignableFromString;
+import org.snmp4j.smi.OID;
+import org.snmp4j.smi.OctetString;
+import org.snmp4j.smi.Variable;
+import org.snmp4j.smi.VariableBinding;
 import org.snmp4j.util.TreeEvent;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Vector;
 import java.util.regex.Pattern;
 
 /**
@@ -41,7 +56,7 @@ public class SNMPUtils {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SNMPUtils.class);
 
-    public static final Pattern OID_PATTERN = Pattern.compile("[[0-9]+\\.]*");
+    public static final Pattern OID_PATTERN = Pattern.compile("[0-9+.]*");
 
     // Delimiter for properties name.
     public static final String SNMP_PROP_DELIMITER = "$";
@@ -52,25 +67,6 @@ public class SNMPUtils {
     // List of properties name when performing simple get.
     private static final List<String> PROPERTY_NAMES = Arrays.asList("snmp$errorIndex", "snmp$errorStatus", "snmp$errorStatusText",
             "snmp$nonRepeaters", "snmp$requestID", "snmp$type", "snmp$variableBindings");
-
-    // Used to validate OID syntax.
-    public static final Validator SNMP_OID_VALIDATOR = (subject, input, context) -> {
-        final ValidationResult.Builder builder = new ValidationResult.Builder();
-        builder.subject(subject).input(input);
-        if (context.isExpressionLanguageSupported(subject) && context.isExpressionLanguagePresent(input)) {
-            return builder.valid(true).explanation("Contains Expression Language").build();
-        }
-        try {
-            if (OID_PATTERN.matcher(input).matches()) {
-                builder.valid(true);
-            } else {
-                builder.valid(false).explanation(input + "is not a valid OID");
-            }
-        } catch (final IllegalArgumentException e) {
-            builder.valid(false).explanation(e.getMessage());
-        }
-        return builder.build();
-    };
 
     /**
      * Updates {@link FlowFile} with attributes representing PDU properties
@@ -240,17 +236,6 @@ public class SNMPUtils {
             default:
                 return null;
         }
-    }
-
-    public static int getSnmpVersion(String snmpVersion) {
-        if ("SNMPv1".equals(snmpVersion)) {
-            return SnmpConstants.version1;
-        } else if ("SNMPv2c".equals(snmpVersion)) {
-            return SnmpConstants.version2c;
-        } else if ("SNMPv3".equals(snmpVersion)) {
-            return SnmpConstants.version3;
-        }
-        throw new RuntimeException("SNMP version is invalid or not supported.");
     }
 
     /**

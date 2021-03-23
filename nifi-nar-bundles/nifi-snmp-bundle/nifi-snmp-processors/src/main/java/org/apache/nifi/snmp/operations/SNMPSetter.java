@@ -16,8 +16,6 @@
  */
 package org.apache.nifi.snmp.operations;
 
-import java.io.IOException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.snmp4j.AbstractTarget;
@@ -25,16 +23,19 @@ import org.snmp4j.PDU;
 import org.snmp4j.Snmp;
 import org.snmp4j.event.ResponseEvent;
 
+import java.io.IOException;
+
 /**
- * Extension of {@link SNMPWorker} to perform SNMP Set requests.
+ * Extension of {@link SNMPRequest} to perform SNMP Set requests.
  */
-public final class SNMPSetter extends SNMPWorker {
+public final class SNMPSetter extends SNMPRequest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SNMPSetter.class);
 
     /**
      * Creates an instance of this setter.
-     * @param snmp instance of {@link Snmp}
+     *
+     * @param snmp   instance of {@link Snmp}
      * @param target instance of {@link AbstractTarget} to request
      */
     public SNMPSetter(Snmp snmp, AbstractTarget target) {
@@ -44,6 +45,7 @@ public final class SNMPSetter extends SNMPWorker {
 
     /**
      * Executes the SNMP set request and returns the response.
+     *
      * @param pdu PDU to send
      * @return Response event
      * @throws IOException IO Exception

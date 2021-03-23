@@ -1,86 +1,30 @@
 package org.apache.nifi.snmp.validators;
 
-
 import org.apache.nifi.components.ValidationResult;
-import org.apache.nifi.snmp.configuration.SecurityConfiguration;
-import org.apache.nifi.util.StringUtils;
-import org.snmp4j.security.SecurityLevel;
+import org.apache.nifi.components.Validator;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
+import java.util.regex.Pattern;
 
 public class OIDValidator {
 
-    private static final String SNMP_V3 = "SNMPv3";
+    public static final Pattern OID_PATTERN = Pattern.compile("[0-9+.]*");
 
-    private final SecurityConfiguration securityConfiguration;
-    private final List<ValidationResult> problems;
-
-    public OIDValidator(final SecurityConfiguration securityConfiguration, final List<ValidationResult> problems) {
-        this.securityConfiguration = securityConfiguration;
-        this.problems = problems;
-    }
-
-    public Collection<ValidationResult> validate() {
-        final boolean isVersion3 = SNMP_V3.equals(securityConfiguration.getVersion());
-        final boolean isSecurityNameInvalid = isInvalid(securityConfiguration.getSecurityName());
-        final boolean isCommunityStringInvalid = isInvalid(securityConfiguration.getCommunityString());
-
-        if (isVersion3 && isSecurityNameInvalid) {
-            problems.add(new ValidationResult.Builder()
-                    .input("SNMP Security Name")
-                    .valid(false)
-                    .explanation("SNMP Security Name must be set with SNMPv3.")
-                    .build());
-            checkSecurityLevel(securityConfiguration, problems);
-
-        } else if (isCommunityStringInvalid) {
-            problems.add(new ValidationResult.Builder()
-                    .input("SNMP Community")
-                    .valid(false)
-                    .explanation("SNMP Community must be set with SNMPv1 and SNMPv2c.")
-                    .build());
+    public static final Validator SNMP_OID_VALIDATOR = (subject, input, context) -> {
+        final ValidationResult.Builder builder = new ValidationResult.Builder();
+        builder.subject(subject).input(input);
+        if (context.isExpressionLanguageSupported(subject) && context.isExpressionLanguagePresent(input)) {
+            return builder.valid(true).explanation("Contains Expression Language").build();
         }
-        return problems;
-    }
-
-    private void checkSecurityLevel(SecurityConfiguration securityConfiguration, List<ValidationResult> problems) {
-
-        final boolean isAuthProtocolInvalid = isInvalid(securityConfiguration.getAuthProtocol());
-        final boolean isAuthPasswordInvalid = isInvalid(securityConfiguration.getAuthPassword());
-        final boolean isPrivacyProtocolInvalid = isInvalid(securityConfiguration.getPrivacyProtocol());
-        final boolean isPrivacyPasswordInvalid = isInvalid(securityConfiguration.getPrivacyPassword());
-        final SecurityLevel securityLevel = SecurityLevel.valueOf(securityConfiguration.getSecurityLevel());
-
-        if (isAuthNoPrivSecurityLevelInvalid(securityLevel, isAuthProtocolInvalid, isAuthPasswordInvalid)) {
-            problems.add(new ValidationResult.Builder()
-                    .input("SNMP Security Level")
-                    .valid(false)
-                    .explanation("Authentication protocol and password must be set when using authNoPriv security level.")
-                    .build());
+        try {
+            if (OID_PATTERN.matcher(input).matches()) {
+                builder.valid(true);
+            } else {
+                builder.valid(false).explanation(input + "is not a valid OID");
+            }
+        } catch (final IllegalArgumentException e) {
+            builder.valid(false).explanation(e.getMessage());
         }
-
-        if (isAuthPrivSecurityLevelInvalid(securityLevel, isAuthProtocolInvalid, isAuthPasswordInvalid, isPrivacyProtocolInvalid, isPrivacyPasswordInvalid)) {
-            problems.add(new ValidationResult.Builder()
-                    .input("SNMP Security Level")
-                    .valid(false)
-                    .explanation("All protocols and passwords must be set when using authPriv security level.")
-                    .build());
-        }
-    }
-
-    private boolean isInvalid(String property) {
-        return Objects.isNull(property) || StringUtils.EMPTY.equals(property);
-    }
-
-    private boolean isAuthNoPrivSecurityLevelInvalid(final SecurityLevel securityLevel, final boolean isAuthProtocolInvalid, final boolean isAuthPasswordInvalid) {
-        return SecurityLevel.authNoPriv == securityLevel && (isAuthProtocolInvalid || isAuthPasswordInvalid);
-    }
-
-    private boolean isAuthPrivSecurityLevelInvalid(final SecurityLevel securityLevel, final boolean isAuthProtocolInvalid, final boolean isAuthPasswordInvalid,
-                                                   final boolean isPrivacyProtocolInvalid, final boolean isPrivacyPasswordInvalid) {
-        return SecurityLevel.authPriv == securityLevel && (isAuthProtocolInvalid || isAuthPasswordInvalid || isPrivacyProtocolInvalid || isPrivacyPasswordInvalid);
-    }
+        return builder.build();
+    };
 
 }

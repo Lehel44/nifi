@@ -1,15 +1,50 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.nifi.snmp.testagents;
 
-import org.apache.nifi.snmp.helper.SNMPTestUtil;
+import org.apache.nifi.remote.io.socket.NetworkUtils;
 import org.snmp4j.TransportMapping;
-import org.snmp4j.agent.*;
-import org.snmp4j.agent.mo.snmp.*;
+import org.snmp4j.agent.BaseAgent;
+import org.snmp4j.agent.CommandProcessor;
+import org.snmp4j.agent.DuplicateRegistrationException;
+import org.snmp4j.agent.MOGroup;
+import org.snmp4j.agent.ManagedObject;
+import org.snmp4j.agent.mo.snmp.RowStatus;
+import org.snmp4j.agent.mo.snmp.SnmpCommunityMIB;
+import org.snmp4j.agent.mo.snmp.SnmpNotificationMIB;
+import org.snmp4j.agent.mo.snmp.SnmpTargetMIB;
+import org.snmp4j.agent.mo.snmp.StorageType;
+import org.snmp4j.agent.mo.snmp.VacmMIB;
 import org.snmp4j.agent.security.MutableVACM;
-import org.snmp4j.log.ConsoleLogFactory;
-import org.snmp4j.log.LogFactory;
 import org.snmp4j.mp.MPv3;
-import org.snmp4j.security.*;
-import org.snmp4j.smi.*;
+import org.snmp4j.security.AuthMD5;
+import org.snmp4j.security.AuthSHA;
+import org.snmp4j.security.PrivAES128;
+import org.snmp4j.security.PrivDES;
+import org.snmp4j.security.SecurityLevel;
+import org.snmp4j.security.SecurityModel;
+import org.snmp4j.security.USM;
+import org.snmp4j.security.UsmUser;
+import org.snmp4j.smi.Address;
+import org.snmp4j.smi.GenericAddress;
+import org.snmp4j.smi.Integer32;
+import org.snmp4j.smi.OID;
+import org.snmp4j.smi.OctetString;
+import org.snmp4j.smi.Variable;
 import org.snmp4j.transport.TransportMappings;
 
 import java.io.File;
@@ -18,24 +53,19 @@ import java.util.Arrays;
 
 public class TestSNMPV3Agent extends BaseAgent {
 
-    static {
-        LogFactory.setLogFactory(new ConsoleLogFactory());
-        //ConsoleLogAdapter.setDebugEnabled(true);
-    }
-
     private final String address;
     private final int port;
 
     public TestSNMPV3Agent(final String address) {
         super(new File("target/bootCounter3.agent"), new File("target/conf3.agent"),
                 new CommandProcessor(new OctetString(MPv3.createLocalEngineID())));
-        port = SNMPTestUtil.availablePort();
+        port = NetworkUtils.availablePort();
         this.address = address + "/" + port;
 
     }
 
     @Override
-    protected void initTransportMappings() throws IOException {
+    protected void initTransportMappings() {
         transportMappings = new TransportMapping[1];
         Address transportAddress = GenericAddress.parse(address);
         TransportMapping<? extends Address> transportMapping = TransportMappings.getInstance().createTransportMapping(transportAddress);

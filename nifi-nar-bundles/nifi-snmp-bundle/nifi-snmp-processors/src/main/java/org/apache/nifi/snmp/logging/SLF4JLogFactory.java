@@ -25,24 +25,24 @@ import org.snmp4j.log.LogFactory;
 
 import java.util.Iterator;
 
-public class Slf4jLogFactory extends LogFactory {
+public class SLF4JLogFactory extends LogFactory {
 
-    public Slf4jLogFactory() {
+    public SLF4JLogFactory() {
     }
 
     @Override
     protected LogAdapter createLogger(Class c) {
-        return new Slf4jLogAdapter(LoggerFactory.getLogger(c.getName()));
+        return new SLF4JLogAdapter(LoggerFactory.getLogger(c.getName()));
     }
 
     @Override
     protected LogAdapter createLogger(String className) {
-        return new Slf4jLogAdapter(LoggerFactory.getLogger(className));
+        return new SLF4JLogAdapter(LoggerFactory.getLogger(className));
     }
 
     @Override
     public LogAdapter getRootLogger() {
-        return new Slf4jLogAdapter(LoggerFactory.getLogger(""));
+        return new SLF4JLogAdapter(LoggerFactory.getLogger(""));
     }
 
     @Override

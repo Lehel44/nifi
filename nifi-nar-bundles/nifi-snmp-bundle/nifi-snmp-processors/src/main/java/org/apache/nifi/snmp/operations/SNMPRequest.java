@@ -16,44 +16,30 @@
  */
 package org.apache.nifi.snmp.operations;
 
-import java.io.IOException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.snmp4j.AbstractTarget;
 import org.snmp4j.Snmp;
 
 /**
- * Base class for implementing SNMP workers.
+ * Base class for implementing SNMP operations.
  *
  * @see SNMPSetter
  * @see SNMPGetter
  */
-public abstract class SNMPWorker implements AutoCloseable {
+public abstract class SNMPRequest {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SNMPWorker.class);
     protected final Snmp snmp;
     protected final AbstractTarget target;
 
     /**
-     * Creates an instance of this worker and initializing it with {@link Snmp}
+     * Creates an instance of this request and initializing it with {@link Snmp}
      * and {@link AbstractTarget} used by sub-classes to interact with SNMP agent.
      *
      * @param snmp   instance of {@link Snmp}
      * @param target instance of {@link AbstractTarget}
      */
-    protected SNMPWorker(Snmp snmp, AbstractTarget target) {
+    protected SNMPRequest(Snmp snmp, AbstractTarget target) {
         this.snmp = snmp;
         this.target = target;
-    }
-
-    /**
-     * Closes {@link Snmp}.
-     */
-    @Override
-    public void close() throws IOException {
-        LOGGER.debug("Closing SNMP connection");
-        snmp.close();
     }
 
     /**
@@ -61,7 +47,7 @@ public abstract class SNMPWorker implements AutoCloseable {
      */
     @Override
     public String toString() {
-        return this.getClass().getSimpleName() + ":" + this.snmp.toString();
+        return getClass().getSimpleName() + ":" + snmp.toString();
     }
 
 }

@@ -23,15 +23,24 @@ import org.apache.nifi.components.ValidationResult;
 import org.apache.nifi.processor.AbstractProcessor;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.util.StandardValidators;
-import org.apache.nifi.snmp.configuration.BasicConfiguration;
-import org.apache.nifi.snmp.configuration.SecurityConfiguration;
-import org.apache.nifi.snmp.configuration.SecurityConfigurationBuilder;
-import org.apache.nifi.snmp.context.SNMPContext;
-import org.apache.nifi.snmp.logging.Slf4jLogFactory;
-import org.apache.nifi.snmp.validators.OIDValidator;
+import org.apache.nifi.snmp.configuration.TargetConfiguration;
+import org.apache.nifi.snmp.configuration.TargetConfigurationBuilder;
+import org.apache.nifi.snmp.context.SNMPClientFactory;
+import org.apache.nifi.snmp.context.TargetFactory;
+import org.apache.nifi.snmp.exception.CloseSNMPClientException;
+import org.apache.nifi.snmp.exception.SNMPClientInitializationException;
+import org.apache.nifi.snmp.logging.SLF4JLogFactory;
+import org.apache.nifi.snmp.validators.SNMPValidator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.snmp4j.AbstractTarget;
+import org.snmp4j.Snmp;
 import org.snmp4j.log.LogFactory;
 
-import java.util.*;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * Base processor that uses SNMP4J client API.
@@ -39,8 +48,10 @@ import java.util.*;
  */
 abstract class AbstractSNMPProcessor extends AbstractProcessor {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSNMPProcessor.class);
+
     static {
-        LogFactory.setLogFactory(new Slf4jLogFactory());
+        LogFactory.setLogFactory(new SLF4JLogFactory());
     }
 
     // Property to define the host of the SNMP agent.
@@ -174,34 +185,17 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
             .addValidator(StandardValidators.INTEGER_VALIDATOR)
             .build();
 
-    protected static final List<PropertyDescriptor> BASIC_PROPERTIES = Collections.unmodifiableList(Arrays.asList(
-            SNMP_CLIENT_PORT,
-            AGENT_HOST,
-            AGENT_PORT,
-            SNMP_VERSION,
-            SNMP_COMMUNITY,
-            SNMP_SECURITY_LEVEL,
-            SNMP_SECURITY_NAME,
-            SNMP_AUTH_PROTOCOL,
-            SNMP_AUTH_PASSWORD,
-            SNMP_PRIVACY_PROTOCOL,
-            SNMP_PRIVACY_PASSWORD,
-            SNMP_RETRIES,
-            SNMP_TIMEOUT
-    ));
-
-    protected SNMPContext snmpContext;
+    protected AbstractTarget target;
+    protected Snmp snmpClient;
 
     public void initSnmpClient(ProcessContext context) {
-        final BasicConfiguration basicConfiguration = new BasicConfiguration(
-                context.getProperty(SNMP_CLIENT_PORT).toString(),
-                context.getProperty(AGENT_HOST).getValue(),
-                context.getProperty(AGENT_PORT).toString(),
-                context.getProperty(SNMP_RETRIES).asInteger(),
-                context.getProperty(SNMP_TIMEOUT).asInteger()
-        );
+        final String clientPort = context.getProperty(SNMP_CLIENT_PORT).getValue();
 
-        final SecurityConfiguration securityConfiguration = new SecurityConfigurationBuilder()
+        final TargetConfiguration configuration = new TargetConfigurationBuilder()
+                .setAgentHost(context.getProperty(AGENT_HOST).getValue())
+                .setAgentPort(context.getProperty(AGENT_PORT).toString())
+                .setRetries(context.getProperty(SNMP_RETRIES).asInteger())
+                .setTimeout(context.getProperty(SNMP_TIMEOUT).asInteger())
                 .setVersion(context.getProperty(SNMP_VERSION).getValue())
                 .setAuthProtocol(context.getProperty(SNMP_AUTH_PROTOCOL).getValue())
                 .setAuthPassword(context.getProperty(SNMP_AUTH_PASSWORD).getValue())
@@ -212,8 +206,9 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
                 .setCommunityString(context.getProperty(SNMP_COMMUNITY).getValue())
                 .createSecurityConfiguration();
 
-        snmpContext = SNMPContext.newInstance();
-        snmpContext.init(basicConfiguration, securityConfiguration);
+        snmpClient = SNMPClientFactory.createSnmpClient(configuration, clientPort);
+        initializeSnmpClient();
+        target = TargetFactory.createTarget(configuration);
     }
 
     /**
@@ -221,8 +216,14 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
      */
     @OnStopped
     public void close() {
-        if (snmpContext != null) {
-            snmpContext.close();
+        if (snmpClient != null) {
+            try {
+                snmpClient.close();
+            } catch (IOException e) {
+                final String errorMessage = "Could not close SNMP client.";
+                LOGGER.error(errorMessage, e);
+                throw new CloseSNMPClientException(errorMessage);
+            }
         }
     }
 
@@ -233,7 +234,7 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
     protected Collection<ValidationResult> customValidate(ValidationContext validationContext) {
         final List<ValidationResult> problems = new ArrayList<>(super.customValidate(validationContext));
 
-        final SecurityConfiguration securityConfiguration = new SecurityConfigurationBuilder()
+        final TargetConfiguration targetConfiguration = new TargetConfigurationBuilder()
                 .setVersion(validationContext.getProperty(SNMP_VERSION).getValue())
                 .setAuthProtocol(validationContext.getProperty(SNMP_SECURITY_NAME).getValue())
                 .setAuthPassword(validationContext.getProperty(SNMP_AUTH_PROTOCOL).getValue())
@@ -244,7 +245,17 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
                 .setCommunityString(validationContext.getProperty(SNMP_COMMUNITY).getValue())
                 .createSecurityConfiguration();
 
-        OIDValidator oidValidator = new OIDValidator(securityConfiguration, problems);
-        return oidValidator.validate();
+        SNMPValidator SNMPValidator = new SNMPValidator(targetConfiguration, problems);
+        return SNMPValidator.validate();
+    }
+
+    private void initializeSnmpClient() {
+        try {
+            snmpClient.listen();
+        } catch (IOException e) {
+            final String errorMessage = "Could not start SNMP client.";
+            LOGGER.error(errorMessage, e);
+            throw new SNMPClientInitializationException(errorMessage);
+        }
     }
 }

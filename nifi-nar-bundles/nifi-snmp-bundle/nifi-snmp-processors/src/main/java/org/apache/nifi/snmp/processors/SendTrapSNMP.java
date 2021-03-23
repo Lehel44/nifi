@@ -1,3 +1,19 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.nifi.snmp.processors;
 
 import org.apache.nifi.annotation.lifecycle.OnScheduled;
@@ -12,11 +28,15 @@ import org.apache.nifi.snmp.operations.SNMPTrapSender;
 import org.snmp4j.smi.OID;
 import org.snmp4j.smi.TimeTicks;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class SendTrapSNMP extends AbstractSNMPProcessor {
 
-    public static final PropertyDescriptor enterpriseOID = new PropertyDescriptor.Builder()
+    public static final PropertyDescriptor ENTERPRISE_OID = new PropertyDescriptor.Builder()
             .name("snmp-trap-enterprise-oid")
             .displayName("Enterprise OID")
             .description("Enterprise is the vendor identification (OID) for the network management sub-system that generated the trap")
@@ -24,7 +44,7 @@ public class SendTrapSNMP extends AbstractSNMPProcessor {
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
 
-    public static final PropertyDescriptor agentAddress = new PropertyDescriptor.Builder()
+    public static final PropertyDescriptor AGENT_ADDRESS = new PropertyDescriptor.Builder()
             .name("snmp-trap-agent-address")
             .displayName("Agent IP address")
             .description("The sender IP address")
@@ -32,7 +52,7 @@ public class SendTrapSNMP extends AbstractSNMPProcessor {
             .addValidator(StandardValidators.NON_BLANK_VALIDATOR)
             .build();
 
-    public static final PropertyDescriptor genericTrapType = new PropertyDescriptor.Builder()
+    public static final PropertyDescriptor GENERIC_TRAP_TYPE = new PropertyDescriptor.Builder()
             .name("snmp-trap-generic-type")
             .displayName("Generic trap type")
             .description("Generic trap type is an integer in the range of 0 to 6. See Usage for details.")
@@ -40,7 +60,7 @@ public class SendTrapSNMP extends AbstractSNMPProcessor {
             .allowableValues("0", "1", "2", "3", "4", "5", "6")
             .build();
 
-    public static final PropertyDescriptor specificTrapType = new PropertyDescriptor.Builder()
+    public static final PropertyDescriptor SPECIFIC_TRAP_TYPE = new PropertyDescriptor.Builder()
             .name("snmp-trap-specific-type")
             .displayName("Specific trap type")
             .description("Specific trap type is a number that further specifies the nature of the event that generated " +
@@ -50,7 +70,7 @@ public class SendTrapSNMP extends AbstractSNMPProcessor {
             .addValidator(StandardValidators.INTEGER_VALIDATOR)
             .build();
 
-    public static final PropertyDescriptor trapOID = new PropertyDescriptor.Builder()
+    public static final PropertyDescriptor TRAP_OID = new PropertyDescriptor.Builder()
             .name("snmp-trap-oid")
             .displayName("Trap OID")
             .description("The authoritative identification of the notification currently being sent")
@@ -58,7 +78,7 @@ public class SendTrapSNMP extends AbstractSNMPProcessor {
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
 
-    public static final PropertyDescriptor trapOIDValue = new PropertyDescriptor.Builder()
+    public static final PropertyDescriptor TRAP_OID_VALUE = new PropertyDescriptor.Builder()
             .name("snmp-trap-oid-value")
             .displayName("Trap OID Value")
             .description("The value of the trap OID")
@@ -66,7 +86,7 @@ public class SendTrapSNMP extends AbstractSNMPProcessor {
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
 
-    public static final PropertyDescriptor managerAddress = new PropertyDescriptor.Builder()
+    public static final PropertyDescriptor MANAGER_ADDRESS = new PropertyDescriptor.Builder()
             .name("snmp-trap-manager-address")
             .displayName("Manager (destination) IP address")
             .description("The address of the SNMP manager where the trap is being sent to.")
@@ -74,7 +94,7 @@ public class SendTrapSNMP extends AbstractSNMPProcessor {
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
 
-    public static final PropertyDescriptor sysUpTime = new PropertyDescriptor.Builder()
+    public static final PropertyDescriptor SYSTEM_UPTIME = new PropertyDescriptor.Builder()
             .name("snmp-trap-sysUpTime")
             .displayName("System uptime")
             .description("The system uptime.")
@@ -92,7 +112,29 @@ public class SendTrapSNMP extends AbstractSNMPProcessor {
             .description("All FlowFiles that cannot received from the SNMP agent are routed to this relationship")
             .build();
 
-    private static final List<PropertyDescriptor> PROPERTY_DESCRIPTORS = createPropertyList();
+    protected static final List<PropertyDescriptor> PROPERTY_DESCRIPTORS = Collections.unmodifiableList(Arrays.asList(
+            SNMP_CLIENT_PORT,
+            AGENT_HOST,
+            AGENT_PORT,
+            SNMP_VERSION,
+            SNMP_COMMUNITY,
+            SNMP_SECURITY_LEVEL,
+            SNMP_SECURITY_NAME,
+            SNMP_AUTH_PROTOCOL,
+            SNMP_AUTH_PASSWORD,
+            SNMP_PRIVACY_PROTOCOL,
+            SNMP_PRIVACY_PASSWORD,
+            SNMP_RETRIES,
+            SNMP_TIMEOUT,
+            ENTERPRISE_OID,
+            AGENT_ADDRESS,
+            GENERIC_TRAP_TYPE,
+            SPECIFIC_TRAP_TYPE,
+            TRAP_OID,
+            MANAGER_ADDRESS,
+            TRAP_OID_VALUE,
+            SYSTEM_UPTIME
+    ));
 
     private static final Set<Relationship> RELATIONSHIPS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
             REL_SUCCESS,
@@ -105,7 +147,7 @@ public class SendTrapSNMP extends AbstractSNMPProcessor {
     @Override
     public void initSnmpClient(ProcessContext context) {
         super.initSnmpClient(context);
-        snmpTrapSender = new SNMPTrapSender(snmpContext.getSnmp(), snmpContext.getTarget());
+        snmpTrapSender = new SNMPTrapSender(snmpClient, target);
     }
 
     /**
@@ -119,14 +161,14 @@ public class SendTrapSNMP extends AbstractSNMPProcessor {
      */
     @Override
     public void onTrigger(ProcessContext context, ProcessSession processSession) {
-        final String enterpriseOIDValue = context.getProperty(enterpriseOID).getValue();
-        final String agentAddressValue = context.getProperty(agentAddress).getValue();
-        final int genericTrapTypeValue = Integer.parseInt(context.getProperty(genericTrapType).getValue());
-        final int specificTrapTypeValue = Integer.parseInt(context.getProperty(specificTrapType).getValue());
-        final String trapOIDKey = context.getProperty(trapOID).getValue();
-        final String managerAddressValue = context.getProperty(managerAddress).getValue();
-        final String trapOIDValueValue = context.getProperty(trapOIDValue).getValue();
-        final int sysUpTimeValue = context.getProperty(sysUpTime).asInteger();
+        final String enterpriseOIDValue = context.getProperty(ENTERPRISE_OID).getValue();
+        final String agentAddressValue = context.getProperty(AGENT_ADDRESS).getValue();
+        final int genericTrapTypeValue = Integer.parseInt(context.getProperty(GENERIC_TRAP_TYPE).getValue());
+        final int specificTrapTypeValue = Integer.parseInt(context.getProperty(SPECIFIC_TRAP_TYPE).getValue());
+        final String trapOIDKey = context.getProperty(TRAP_OID).getValue();
+        final String managerAddressValue = context.getProperty(MANAGER_ADDRESS).getValue();
+        final String trapOIDValueValue = context.getProperty(TRAP_OID_VALUE).getValue();
+        final int sysUpTimeValue = context.getProperty(SYSTEM_UPTIME).asInteger();
 
         snmpTrapSender.generateTrap(new TimeTicks(sysUpTimeValue), enterpriseOIDValue, agentAddressValue, genericTrapTypeValue, specificTrapTypeValue,
                 new OID(trapOIDKey), managerAddressValue, trapOIDValueValue);
@@ -140,19 +182,6 @@ public class SendTrapSNMP extends AbstractSNMPProcessor {
     @Override
     public Set<Relationship> getRelationships() {
         return RELATIONSHIPS;
-    }
-
-    /**
-     * Creates a list of the base class' and the current properties.
-     *
-     * @return a list of properties
-     */
-    private static List<PropertyDescriptor> createPropertyList() {
-        List<PropertyDescriptor> propertyDescriptors = new ArrayList<>();
-        propertyDescriptors.addAll(BASIC_PROPERTIES);
-        propertyDescriptors.addAll(Arrays.asList(enterpriseOID, agentAddress, genericTrapType, specificTrapType,
-                trapOID, managerAddress, trapOIDValue, sysUpTime));
-        return Collections.unmodifiableList(propertyDescriptors);
     }
 
 }

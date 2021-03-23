@@ -34,7 +34,11 @@ import org.snmp4j.event.ResponseEvent;
 import org.snmp4j.mp.SnmpConstants;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Performs a SNMP Set operation based on attributes of incoming FlowFile.
@@ -59,6 +63,22 @@ class SetSNMP extends AbstractSNMPProcessor {
             .description("All FlowFiles that failed during the SNMP Set care routed to this relationship")
             .build();
 
+    protected static final List<PropertyDescriptor> PROPERTY_DESCRIPTORS = Collections.unmodifiableList(Arrays.asList(
+            SNMP_CLIENT_PORT,
+            AGENT_HOST,
+            AGENT_PORT,
+            SNMP_VERSION,
+            SNMP_COMMUNITY,
+            SNMP_SECURITY_LEVEL,
+            SNMP_SECURITY_NAME,
+            SNMP_AUTH_PROTOCOL,
+            SNMP_AUTH_PASSWORD,
+            SNMP_PRIVACY_PROTOCOL,
+            SNMP_PRIVACY_PASSWORD,
+            SNMP_RETRIES,
+            SNMP_TIMEOUT
+    ));
+
     private static final Set<Relationship> RELATIONSHIPS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
             REL_SUCCESS,
             REL_FAILURE
@@ -69,7 +89,7 @@ class SetSNMP extends AbstractSNMPProcessor {
     @OnScheduled
     public void initSnmpClient(ProcessContext context) {
         super.initSnmpClient(context);
-        snmpSetter = new SNMPSetter(snmpContext.getSnmp(), snmpContext.getTarget());
+        snmpSetter = new SNMPSetter(snmpClient, target);
     }
 
 
@@ -98,7 +118,7 @@ class SetSNMP extends AbstractSNMPProcessor {
             } else if (response.getResponse().getErrorStatus() == PDU.noError) {
                 flowFile = SNMPUtils.updateFlowFileAttributesWithPduProperties(pdu, flowFile, processSession);
                 processSession.transfer(flowFile, REL_SUCCESS);
-                processSession.getProvenanceReporter().send(flowFile, snmpContext.getTarget().getAddress().toString());
+                processSession.getProvenanceReporter().send(flowFile, target.getAddress().toString());
             } else {
                 final String error = response.getResponse().getErrorStatusText();
                 flowFile = SNMPUtils.addAttribute(SNMPUtils.SNMP_PROP_PREFIX + "error", error, flowFile, processSession);
@@ -113,7 +133,7 @@ class SetSNMP extends AbstractSNMPProcessor {
     }
 
     private PDU createPdu() {
-        if (snmpContext.getTarget().getVersion() == SnmpConstants.version3) {
+        if (target.getVersion() == SnmpConstants.version3) {
             return new ScopedPDU();
         } else {
             return new PDU();
@@ -125,7 +145,7 @@ class SetSNMP extends AbstractSNMPProcessor {
      */
     @Override
     protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
-        return BASIC_PROPERTIES;
+        return PROPERTY_DESCRIPTORS;
     }
 
     /**

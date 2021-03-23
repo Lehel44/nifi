@@ -9,7 +9,6 @@ import org.snmp4j.PDUv1;
 import org.snmp4j.Snmp;
 import org.snmp4j.event.ResponseEvent;
 import org.snmp4j.mp.SnmpConstants;
-import org.snmp4j.smi.Counter64;
 import org.snmp4j.smi.IpAddress;
 import org.snmp4j.smi.OID;
 import org.snmp4j.smi.OctetString;
@@ -18,7 +17,7 @@ import org.snmp4j.smi.VariableBinding;
 
 import java.io.IOException;
 
-public class SNMPTrapSender extends SNMPWorker {
+public class SNMPTrapSender extends SNMPRequest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SNMPTrapSender.class);
 
