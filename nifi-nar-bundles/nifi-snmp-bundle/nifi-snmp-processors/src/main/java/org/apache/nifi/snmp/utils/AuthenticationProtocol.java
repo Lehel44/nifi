@@ -16,29 +16,6 @@
  */
 package org.apache.nifi.snmp.utils;
 
-import java.util.Arrays;
-
-
-public enum SNMPVersion {
-    SNMP_V1("SNMPv1"),
-    SNMP_V2C("SNMPv2c"),
-    SNMP_V3("SNMPv3");
-
-    private final String snmpVersionDisplay;
-
-
-    SNMPVersion(final String snmpVersionDisplay) {
-        this.snmpVersionDisplay = snmpVersionDisplay;
-    }
-
-    public static SNMPVersion getEnumByDisplayName(String displayName) {
-        return Arrays.stream(SNMPVersion.values())
-                .filter(s -> s.snmpVersionDisplay.equals(displayName))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Invalid SNMP verison"));
-    }
-
-    public String getSnmpVersionDisplay() {
-        return snmpVersionDisplay;
-    }
+public enum AuthenticationProtocol {
+    SHA, MD5
 }

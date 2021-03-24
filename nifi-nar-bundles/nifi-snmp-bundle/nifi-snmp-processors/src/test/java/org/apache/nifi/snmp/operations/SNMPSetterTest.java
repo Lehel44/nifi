@@ -85,7 +85,7 @@ public class SNMPSetterTest {
     }
 
     @Test
-    public void testSuccessfulSnmpV1Set() throws IOException, InterruptedException {
+    public void testSuccessfulSnmpV1Set() throws IOException {
         Snmp snmp = SNMPTestUtils.createSnmp();
         CommunityTarget target = SNMPTestUtils.createCommTarget("public", LOCALHOST + "/" + snmpV1Agent.getPort(), SnmpConstants.version1);
         String expectedOIDValue = "testValue";

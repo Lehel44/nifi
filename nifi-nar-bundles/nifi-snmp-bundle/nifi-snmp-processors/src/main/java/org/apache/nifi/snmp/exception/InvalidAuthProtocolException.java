@@ -14,31 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.nifi.snmp.utils;
+package org.apache.nifi.snmp.exception;
 
-import java.util.Arrays;
+public class InvalidAuthProtocolException extends RuntimeException {
 
-
-public enum SNMPVersion {
-    SNMP_V1("SNMPv1"),
-    SNMP_V2C("SNMPv2c"),
-    SNMP_V3("SNMPv3");
-
-    private final String snmpVersionDisplay;
-
-
-    SNMPVersion(final String snmpVersionDisplay) {
-        this.snmpVersionDisplay = snmpVersionDisplay;
+    public InvalidAuthProtocolException(String errorMessage) {
+        super(errorMessage);
     }
 
-    public static SNMPVersion getEnumByDisplayName(String displayName) {
-        return Arrays.stream(SNMPVersion.values())
-                .filter(s -> s.snmpVersionDisplay.equals(displayName))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Invalid SNMP verison"));
-    }
 
-    public String getSnmpVersionDisplay() {
-        return snmpVersionDisplay;
-    }
 }

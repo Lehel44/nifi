@@ -61,8 +61,7 @@ import java.util.Set;
         @WritesAttribute(attribute = SNMPUtils.SNMP_PROP_PREFIX + "textualOid", description = "This attribute will exist if and only if the strategy"
                 + " is GET and will be equal to the value given in Textual Oid property.")
 })
-public
-class GetSNMP extends AbstractSNMPProcessor {
+public class GetSNMP extends AbstractSNMPProcessor {
 
     // OID to request (if walk, it is the root ID of the request).
     public static final PropertyDescriptor OID = new PropertyDescriptor.Builder()

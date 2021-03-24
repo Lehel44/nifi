@@ -19,9 +19,13 @@ package org.apache.nifi.snmp.utils;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.logging.ComponentLog;
 import org.apache.nifi.processor.ProcessSession;
+import org.apache.nifi.snmp.exception.InvalidAuthProtocolException;
+import org.apache.nifi.snmp.exception.InvalidPrivProtocolException;
+import org.apache.nifi.snmp.exception.InvalidSnmpVersionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.snmp4j.PDU;
+import org.snmp4j.mp.SnmpConstants;
 import org.snmp4j.security.AuthMD5;
 import org.snmp4j.security.AuthSHA;
 import org.snmp4j.security.Priv3DES;
@@ -198,25 +202,26 @@ public class SNMPUtils {
     }
 
     /**
-     * Method to return the private protocol given the property.
+     * Method to return the privacy protocol given the property.
      *
-     * @param privProtocol property
+     * @param privProtocolDisplayName property
      * @return protocol
      */
-    public static OID getPriv(String privProtocol) {
+    public static OID getPriv(String privProtocolDisplayName) {
+        final PrivacyProtocol privProtocol = PrivacyProtocol.getEnumByDisplayName(privProtocolDisplayName);
         switch (privProtocol) {
-            case "DES":
+            case DES:
                 return PrivDES.ID;
-            case "3DES":
+            case DES_3:
                 return Priv3DES.ID;
-            case "AES128":
+            case AES_128:
                 return PrivAES128.ID;
-            case "AES192":
+            case AES_192:
                 return PrivAES192.ID;
-            case "AES256":
+            case AES_256:
                 return PrivAES256.ID;
             default:
-                return null;
+                throw new InvalidPrivProtocolException("Invalid privacy protocol provided.");
         }
     }
 
@@ -227,13 +232,34 @@ public class SNMPUtils {
      * @return protocol
      */
     public static OID getAuth(String authProtocol) {
-        switch (authProtocol) {
-            case "SHA":
+        final AuthenticationProtocol protocol = AuthenticationProtocol.valueOf(authProtocol);
+        switch (protocol) {
+            case SHA:
                 return AuthSHA.ID;
-            case "MD5":
+            case MD5:
                 return AuthMD5.ID;
             default:
-                return null;
+                throw new InvalidAuthProtocolException("Invalid authentication protocol provided.");
+        }
+    }
+
+    /**
+     * Method to return the SNMP version number by the given the property.
+     *
+     * @param snmpVersionDisplayName property
+     * @return protocol
+     */
+    public static int getVersion(String snmpVersionDisplayName) {
+        final SNMPVersion snmpVersion = SNMPVersion.getEnumByDisplayName(snmpVersionDisplayName);
+        switch (snmpVersion) {
+            case SNMP_V1:
+                return SnmpConstants.version1;
+            case SNMP_V2C:
+                return SnmpConstants.version2c;
+            case SNMP_V3:
+                return SnmpConstants.version3;
+            default:
+                throw new InvalidSnmpVersionException("Invalid SNMP version provided.");
         }
     }
 

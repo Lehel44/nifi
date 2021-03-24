@@ -18,27 +18,23 @@ package org.apache.nifi.snmp.utils;
 
 import java.util.Arrays;
 
+public enum PrivacyProtocol {
+    DES("DES"), DES_3("3DES"), AES_128("AES128"), AES_192("AES192"), AES_256("AES256");
 
-public enum SNMPVersion {
-    SNMP_V1("SNMPv1"),
-    SNMP_V2C("SNMPv2c"),
-    SNMP_V3("SNMPv3");
+    private final String displayName;
 
-    private final String snmpVersionDisplay;
-
-
-    SNMPVersion(final String snmpVersionDisplay) {
-        this.snmpVersionDisplay = snmpVersionDisplay;
+    PrivacyProtocol(String displayName) {
+        this.displayName = displayName;
     }
 
-    public static SNMPVersion getEnumByDisplayName(String displayName) {
-        return Arrays.stream(SNMPVersion.values())
-                .filter(s -> s.snmpVersionDisplay.equals(displayName))
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    public static PrivacyProtocol getEnumByDisplayName(String displayName) {
+        return Arrays.stream(PrivacyProtocol.values())
+                .filter(s -> s.getDisplayName().equals(displayName))
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("Invalid SNMP verison"));
-    }
-
-    public String getSnmpVersionDisplay() {
-        return snmpVersionDisplay;
+                .orElseThrow(() -> new RuntimeException("Invalid privacy protocol."));
     }
 }

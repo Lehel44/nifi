@@ -51,7 +51,7 @@ import java.util.Set;
 @CapabilityDescription("Based on incoming FlowFile attributes, the processor will execute SNMP Set requests." +
         " When founding attributes with name like snmp$<OID>, the processor will atempt to set the value of" +
         " attribute to the corresponding OID given in the attribute name")
-class SetSNMP extends AbstractSNMPProcessor {
+public class SetSNMP extends AbstractSNMPProcessor {
 
     public static final Relationship REL_SUCCESS = new Relationship.Builder()
             .name("success")
@@ -63,7 +63,7 @@ class SetSNMP extends AbstractSNMPProcessor {
             .description("All FlowFiles that failed during the SNMP Set care routed to this relationship")
             .build();
 
-    protected static final List<PropertyDescriptor> PROPERTY_DESCRIPTORS = Collections.unmodifiableList(Arrays.asList(
+    private static final List<PropertyDescriptor> PROPERTY_DESCRIPTORS = Collections.unmodifiableList(Arrays.asList(
             SNMP_CLIENT_PORT,
             AGENT_HOST,
             AGENT_PORT,
@@ -144,7 +144,7 @@ class SetSNMP extends AbstractSNMPProcessor {
      * @see org.apache.nifi.components.AbstractConfigurableComponent#getSupportedPropertyDescriptors()
      */
     @Override
-    protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
+    public List<PropertyDescriptor> getSupportedPropertyDescriptors() {
         return PROPERTY_DESCRIPTORS;
     }
 

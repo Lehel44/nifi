@@ -18,6 +18,7 @@ package org.apache.nifi.snmp.validators;
 
 import org.apache.nifi.components.ValidationResult;
 import org.apache.nifi.snmp.configuration.TargetConfiguration;
+import org.apache.nifi.snmp.utils.SNMPVersion;
 import org.apache.nifi.util.StringUtils;
 import org.snmp4j.security.SecurityLevel;
 
@@ -26,8 +27,6 @@ import java.util.List;
 import java.util.Objects;
 
 public class SNMPValidator {
-
-    private static final String SNMP_V3 = "SNMPv3";
 
     private final TargetConfiguration targetConfiguration;
     private final List<ValidationResult> problems;
@@ -38,7 +37,7 @@ public class SNMPValidator {
     }
 
     public Collection<ValidationResult> validate() {
-        final boolean isVersion3 = SNMP_V3.equals(targetConfiguration.getVersion());
+        final boolean isVersion3 = SNMPVersion.SNMP_V3.getSnmpVersionDisplay().equals(targetConfiguration.getVersion());
         final boolean isSecurityNameInvalid = isInvalid(targetConfiguration.getSecurityName());
         final boolean isCommunityStringInvalid = isInvalid(targetConfiguration.getCommunityString());
 
