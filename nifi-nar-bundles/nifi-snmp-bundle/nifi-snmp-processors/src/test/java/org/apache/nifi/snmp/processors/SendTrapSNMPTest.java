@@ -16,26 +16,30 @@
  */
 package org.apache.nifi.snmp.processors;
 
-import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.logging.ComponentLog;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.remote.io.socket.NetworkUtils;
 import org.apache.nifi.snmp.context.SNMPClientFactory;
 import org.apache.nifi.snmp.operations.SNMPTrapReceiver;
+import org.apache.nifi.snmp.utils.SNMPUtils;
+import org.apache.nifi.util.MockFlowFile;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.snmp4j.PDUv1;
 import org.snmp4j.Snmp;
+import org.snmp4j.mp.SnmpConstants;
 import org.snmp4j.smi.OID;
+import org.snmp4j.smi.TimeTicks;
 
 import java.io.IOException;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
 public class SendTrapSNMPTest {
 
-    @Ignore("Found a bug in TestRunner, sometimes exits when debugging. Needs further investigation.")
     @Test
     public void testReceive() throws IOException, InterruptedException {
 
@@ -64,17 +68,20 @@ public class SendTrapSNMPTest {
         final ProcessSession session = runner.getProcessSessionFactory().createSession();
         final ComponentLog logger = runner.getLogger();
 
-        SNMPTrapReceiver trapReceiver = new SNMPTrapReceiver(snmp, processContext, session, logger);
-        Thread.sleep(200);
+        new SNMPTrapReceiver(snmp, processContext, session, logger);
 
         sendTrapSNMP.initSnmpClient(processContext);
         sendTrapSNMP.onTrigger(processContext, session);
 
-        Thread.sleep(2000);
+        Thread.sleep(200);
 
-        final FlowFile flowFile = session.get();
-        System.out.println("1");
-        Thread.sleep(1000000);
+        final MockFlowFile successFF = runner.getFlowFilesForRelationship(GetSNMP.REL_SUCCESS).get(0);
+        assertNotNull(successFF);
+        assertEquals("Success", successFF.getAttribute(SNMPUtils.SNMP_PROP_PREFIX + "errorStatusText"));
+        assertEquals(trapOID.toString(), successFF.getAttribute(SNMPUtils.SNMP_PROP_PREFIX + SnmpConstants.snmpTrapOID + SNMPUtils.SNMP_PROP_DELIMITER + "6"));
+        assertEquals(managerAddress, successFF.getAttribute(SNMPUtils.SNMP_PROP_PREFIX + SnmpConstants.snmpTrapAddress + SNMPUtils.SNMP_PROP_DELIMITER + "64"));
+        assertEquals(String.valueOf(new TimeTicks(sysUpTime)), successFF.getAttribute(SNMPUtils.SNMP_PROP_PREFIX + SnmpConstants.sysUpTime + SNMPUtils.SNMP_PROP_DELIMITER + "67"));
+        assertEquals(trapOIDValue, successFF.getAttribute(SNMPUtils.SNMP_PROP_PREFIX + trapOID + SNMPUtils.SNMP_PROP_DELIMITER + "4"));
     }
 
     private void setupTestRunner(TestRunner runner, int clientPort, String agentHost, int agentPort, String enterpriseOID,
