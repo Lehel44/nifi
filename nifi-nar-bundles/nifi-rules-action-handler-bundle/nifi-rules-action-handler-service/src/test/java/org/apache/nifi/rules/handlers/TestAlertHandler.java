@@ -20,9 +20,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.components.PropertyValue;
 import org.apache.nifi.context.PropertyContext;
+import org.apache.nifi.events.BulletinFactory;
 import org.apache.nifi.logging.ComponentLog;
 import org.apache.nifi.reporting.Bulletin;
-import org.apache.nifi.reporting.BulletinFactory;
 import org.apache.nifi.reporting.BulletinRepository;
 import org.apache.nifi.reporting.InitializationException;
 import org.apache.nifi.reporting.ReportingContext;
@@ -43,7 +43,6 @@ import java.util.Map;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
-
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
@@ -72,7 +71,7 @@ public class TestAlertHandler {
         Mockito.when(reportingContext.getBulletinRepository()).thenReturn(mockAlertBulletinRepository);
         Mockito.when(reportingContext.createBulletin(anyString(), Mockito.any(Severity.class), anyString()))
                 .thenAnswer(invocation ->
-                BulletinFactory.createBulletin(invocation.getArgument(0), invocation.getArgument(1).toString(), invocation.getArgument(2)));
+                        BulletinFactory.createBulletin(invocation.getArgument(0), invocation.getArgument(1).toString(), invocation.getArgument(2)));
     }
 
     @Test
@@ -111,7 +110,7 @@ public class TestAlertHandler {
 
         final String category = "Rules Alert";
         final String message = "This should be sent as an alert!";
-        final String severity =  "INFO";
+        final String severity = "INFO";
         attributes.put("category", category);
         attributes.put("message", message);
         attributes.put("severity", severity);
@@ -143,8 +142,7 @@ public class TestAlertHandler {
         final Map<String, Object> metrics = new HashMap<>();
 
         final String category = "Rules Triggered Alert";
-        final String message = "An alert was triggered by a rules based action.";
-        final String severity =  "INFO";
+        final String severity = "INFO";
         metrics.put("jvmHeap", "1000000");
         metrics.put("cpu", "90");
 
@@ -167,13 +165,13 @@ public class TestAlertHandler {
     }
 
     @Test
-    public void testInvalidContext(){
+    public void testInvalidContext() {
         final Map<String, String> attributes = new HashMap<>();
         final Map<String, Object> metrics = new HashMap<>();
 
         final String category = "Rules Alert";
         final String message = "This should be sent as an alert!";
-        final String severity =  "INFO";
+        final String severity = "INFO";
         attributes.put("category", category);
         attributes.put("message", message);
         attributes.put("severity", severity);
@@ -197,17 +195,17 @@ public class TestAlertHandler {
         alertHandler.execute(fakeContext, action, metrics);
         final String debugMessage = mockComponentLog.getWarnMessage();
         assertTrue(StringUtils.isNotEmpty(debugMessage));
-        assertEquals(debugMessage,"Reporting context was not provided to create bulletins.");
+        assertEquals(debugMessage, "Reporting context was not provided to create bulletins.");
     }
 
     @Test
-    public void testEmptyBulletinRepository(){
+    public void testEmptyBulletinRepository() {
         final Map<String, String> attributes = new HashMap<>();
         final Map<String, Object> metrics = new HashMap<>();
 
         final String category = "Rules Alert";
         final String message = "This should be sent as an alert!";
-        final String severity =  "INFO";
+        final String severity = "INFO";
         attributes.put("category", category);
         attributes.put("message", message);
         attributes.put("severity", severity);
@@ -222,11 +220,11 @@ public class TestAlertHandler {
         alertHandler.execute(fakeContext, action, metrics);
         final String warnMessage = mockComponentLog.getWarnMessage();
         assertTrue(StringUtils.isNotEmpty(warnMessage));
-        assertEquals(warnMessage,"Bulletin Repository is not available which is unusual. Cannot send a bulletin.");
+        assertEquals(warnMessage, "Bulletin Repository is not available which is unusual. Cannot send a bulletin.");
     }
 
     @Test
-    public void testInvalidActionTypeException(){
+    public void testInvalidActionTypeException() {
 
         runner.disableControllerService(alertHandler);
         runner.setProperty(alertHandler, AlertHandler.ENFORCE_ACTION_TYPE, "ALERT");
@@ -237,7 +235,7 @@ public class TestAlertHandler {
 
         final String category = "Rules Alert";
         final String message = "This should be sent as an alert!";
-        final String severity =  "INFO";
+        final String severity = "INFO";
         attributes.put("category", category);
         attributes.put("message", message);
         attributes.put("severity", severity);
@@ -255,7 +253,7 @@ public class TestAlertHandler {
     }
 
     @Test
-    public void testInvalidActionTypeWarn(){
+    public void testInvalidActionTypeWarn() {
 
         runner.disableControllerService(alertHandler);
         runner.setProperty(alertHandler, AlertHandler.ENFORCE_ACTION_TYPE, "ALERT");
@@ -266,7 +264,7 @@ public class TestAlertHandler {
 
         final String category = "Rules Alert";
         final String message = "This should be sent as an alert!";
-        final String severity =  "INFO";
+        final String severity = "INFO";
         attributes.put("category", category);
         attributes.put("message", message);
         attributes.put("severity", severity);
@@ -277,18 +275,18 @@ public class TestAlertHandler {
         action.setType("FAKE");
         action.setAttributes(attributes);
         try {
-            alertHandler.execute(reportingContext,action, metrics);
+            alertHandler.execute(reportingContext, action, metrics);
             assertTrue(true);
         } catch (UnsupportedOperationException ex) {
             fail();
         }
         final String warnMessage = mockComponentLog.getWarnMessage();
         assertTrue(StringUtils.isNotEmpty(warnMessage));
-        assertEquals("This Action Handler does not support actions with the provided type: FAKE",warnMessage);
+        assertEquals("This Action Handler does not support actions with the provided type: FAKE", warnMessage);
     }
 
     @Test
-    public void testInvalidActionTypeIgnore(){
+    public void testInvalidActionTypeIgnore() {
 
         runner.disableControllerService(alertHandler);
         runner.setProperty(alertHandler, AlertHandler.ENFORCE_ACTION_TYPE, "ALERT");
@@ -299,7 +297,7 @@ public class TestAlertHandler {
 
         final String category = "Rules Alert";
         final String message = "This should be sent as an alert!";
-        final String severity =  "INFO";
+        final String severity = "INFO";
         attributes.put("category", category);
         attributes.put("message", message);
         attributes.put("severity", severity);
@@ -310,18 +308,18 @@ public class TestAlertHandler {
         action.setType("FAKE");
         action.setAttributes(attributes);
         try {
-            alertHandler.execute(reportingContext,action, metrics);
+            alertHandler.execute(reportingContext, action, metrics);
             assertTrue(true);
         } catch (UnsupportedOperationException ex) {
             fail();
         }
         final String debugMessage = mockComponentLog.getDebugMessage();
         assertTrue(StringUtils.isNotEmpty(debugMessage));
-        assertEquals("This Action Handler does not support actions with the provided type: FAKE",debugMessage);
+        assertEquals("This Action Handler does not support actions with the provided type: FAKE", debugMessage);
     }
 
     @Test
-    public void testValidActionType(){
+    public void testValidActionType() {
         runner.disableControllerService(alertHandler);
         runner.setProperty(alertHandler, AlertHandler.ENFORCE_ACTION_TYPE, "ALERT, LOG, ");
         runner.enableControllerService(alertHandler);
@@ -330,7 +328,7 @@ public class TestAlertHandler {
 
         final String category = "Rules Alert";
         final String message = "This should be sent as an alert!";
-        final String severity =  "INFO";
+        final String severity = "INFO";
         attributes.put("category", category);
         attributes.put("message", message);
         attributes.put("severity", severity);
@@ -341,7 +339,7 @@ public class TestAlertHandler {
         action.setType("ALERT");
         action.setAttributes(attributes);
         try {
-            alertHandler.execute(reportingContext,action, metrics);
+            alertHandler.execute(reportingContext, action, metrics);
             assertTrue(true);
         } catch (UnsupportedOperationException ex) {
             fail();

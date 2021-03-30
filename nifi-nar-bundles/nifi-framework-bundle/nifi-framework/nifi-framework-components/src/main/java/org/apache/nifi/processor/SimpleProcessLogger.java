@@ -19,6 +19,7 @@ package org.apache.nifi.processor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.logging.ComponentLog;
 import org.apache.nifi.logging.LogLevel;
+import org.apache.nifi.logging.LogMessage;
 import org.apache.nifi.logging.LogRepository;
 import org.apache.nifi.logging.LogRepositoryFactory;
 import org.slf4j.Logger;
@@ -110,6 +111,13 @@ public class SimpleProcessLogger implements ComponentLog {
     }
 
     @Override
+    public void warn(LogMessage logMessage) {
+        if (isWarnEnabled()) {
+            logRepository.addLogMessage(logMessage);
+        }
+    }
+
+    @Override
     public void trace(String msg, Throwable t) {
         if (!isTraceEnabled()) {
             return;
@@ -156,6 +164,13 @@ public class SimpleProcessLogger implements ComponentLog {
 
         logger.trace(msg, os);
         logRepository.addLogMessage(LogLevel.TRACE, msg, os, t);
+    }
+
+    @Override
+    public void trace(LogMessage logMessage) {
+        if (isTraceEnabled()) {
+            logRepository.addLogMessage(logMessage);
+        }
     }
 
     @Override
@@ -239,6 +254,13 @@ public class SimpleProcessLogger implements ComponentLog {
     }
 
     @Override
+    public void info(LogMessage message) {
+        if (isInfoEnabled()) {
+            logRepository.addLogMessage(message);
+        }
+    }
+
+    @Override
     public String getName() {
         return logger.getName();
     }
@@ -294,6 +316,11 @@ public class SimpleProcessLogger implements ComponentLog {
 
         logger.error(msg, os);
         logRepository.addLogMessage(LogLevel.ERROR, msg, os, t);
+    }
+
+    @Override
+    public void error(LogMessage message) {
+        logRepository.addLogMessage(message);
     }
 
     private Object[] addProcessorAndThrowable(final Object[] os, final Throwable t, final boolean includeStackTrace) {
@@ -364,6 +391,13 @@ public class SimpleProcessLogger implements ComponentLog {
 
         logger.debug(msg, os);
         logRepository.addLogMessage(LogLevel.DEBUG, msg, os);
+    }
+
+    @Override
+    public void debug(LogMessage message) {
+        if (isDebugEnabled()) {
+            logRepository.addLogMessage(message);
+        }
     }
 
     @Override
@@ -450,6 +484,28 @@ public class SimpleProcessLogger implements ComponentLog {
                 break;
             case WARN:
                 warn(msg, os, t);
+                break;
+        }
+    }
+
+    @Override
+    public void log(LogMessage message) {
+        switch (message.getLogLevel()) {
+            case DEBUG:
+                debug(message);
+                break;
+            case ERROR:
+            case FATAL:
+                error(message);
+                break;
+            case INFO:
+                info(message);
+                break;
+            case TRACE:
+                trace(message);
+                break;
+            case WARN:
+                warn(message);
                 break;
         }
     }
