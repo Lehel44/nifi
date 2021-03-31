@@ -754,7 +754,7 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
                     if (logger.isDebugEnabled()) {
                         logger.error("", e);
                     }
-                    controller.getBulletinRepository().addBulletin(BulletinFactory.createBulletin(
+                    controller.getBulletinRepository().addBulletin(BulletinFactory.createSystemBulletin(
                             "Reporting Tasks", Severity.ERROR.name(), "Failed to start " + reportingTask + " due to " + e));
                 }
             } else if (ScheduledState.DISABLED.name().equals(dto.getState())) {
@@ -765,7 +765,7 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
                     if (logger.isDebugEnabled()) {
                         logger.error("", e);
                     }
-                    controller.getBulletinRepository().addBulletin(BulletinFactory.createBulletin(
+                    controller.getBulletinRepository().addBulletin(BulletinFactory.createSystemBulletin(
                             "Reporting Tasks", Severity.ERROR.name(), "Failed to mark " + reportingTask + " as disabled due to " + e));
                 }
             }
@@ -801,11 +801,11 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
                 logger.error("", ise);
 
                 // create bulletin for the Processor Node
-                controller.getBulletinRepository().addBulletin(BulletinFactory.createBulletin("Node Reconnection", Severity.ERROR.name(),
+                controller.getBulletinRepository().addBulletin(BulletinFactory.createSystemBulletin("Node Reconnection", Severity.ERROR.name(),
                         "Failed to change Scheduled State of " + taskNode + " from " + taskNode.getScheduledState().name() + " to " + dto.getState() + " due to " + ise.toString()));
 
                 // create bulletin at Controller level.
-                controller.getBulletinRepository().addBulletin(BulletinFactory.createBulletin("Node Reconnection", Severity.ERROR.name(),
+                controller.getBulletinRepository().addBulletin(BulletinFactory.createSystemBulletin("Node Reconnection", Severity.ERROR.name(),
                         "Failed to change Scheduled State of " + taskNode + " from " + taskNode.getScheduledState().name() + " to " + dto.getState() + " due to " + ise.toString()));
             }
         }
@@ -929,11 +929,11 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
                     logger.error("", ise);
 
                     // create bulletin for the Processor Node
-                    controller.getBulletinRepository().addBulletin(BulletinFactory.createBulletin(procNode, "Node Reconnection", Severity.ERROR.name(),
+                    controller.getBulletinRepository().addBulletin(BulletinFactory.createSystemBulletin(procNode, "Node Reconnection", Severity.ERROR.name(),
                             "Failed to change Scheduled State of " + procNode + " from " + procNode.getScheduledState().name() + " to " + dto.getState() + " due to " + ise.toString()));
 
                     // create bulletin at Controller level.
-                    controller.getBulletinRepository().addBulletin(BulletinFactory.createBulletin("Node Reconnection", Severity.ERROR.name(),
+                    controller.getBulletinRepository().addBulletin(BulletinFactory.createSystemBulletin("Node Reconnection", Severity.ERROR.name(),
                             "Failed to change Scheduled State of " + procNode + " from " + procNode.getScheduledState().name() + " to " + dto.getState() + " due to " + ise.toString()));
                 }
             }
