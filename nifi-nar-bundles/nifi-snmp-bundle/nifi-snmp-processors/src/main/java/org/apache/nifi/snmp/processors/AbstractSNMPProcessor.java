@@ -25,19 +25,12 @@ import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.snmp.configuration.TargetConfiguration;
 import org.apache.nifi.snmp.configuration.TargetConfigurationBuilder;
-import org.apache.nifi.snmp.context.SNMPClientFactory;
-import org.apache.nifi.snmp.context.TargetFactory;
-import org.apache.nifi.snmp.exception.CloseSNMPClientException;
-import org.apache.nifi.snmp.exception.SNMPClientInitializationException;
 import org.apache.nifi.snmp.logging.SLF4JLogFactory;
+import org.apache.nifi.snmp.operations.SNMPRequestHandler;
+import org.apache.nifi.snmp.utils.SNMPVersion;
 import org.apache.nifi.snmp.validators.SNMPValidator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.snmp4j.AbstractTarget;
-import org.snmp4j.Snmp;
 import org.snmp4j.log.LogFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -48,25 +41,21 @@ import java.util.List;
  */
 abstract class AbstractSNMPProcessor extends AbstractProcessor {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSNMPProcessor.class);
-
     static {
         LogFactory.setLogFactory(new SLF4JLogFactory());
     }
 
-    // Property to define the host of the SNMP agent.
     public static final PropertyDescriptor SNMP_CLIENT_PORT = new PropertyDescriptor.Builder()
             .name("snmp-client-port")
-            .displayName("SNMP client (processor) port")
+            .displayName("SNMP client port")
             .description("The processor runs an SNMP client on localhost. The port however can be specified")
             .required(true)
             .defaultValue("0")
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
 
-    // Property to define the host of the SNMP agent.
     public static final PropertyDescriptor AGENT_HOST = new PropertyDescriptor.Builder()
-            .name("snmp-agent-hostname")
+            .name("snmp-hostname")
             .displayName("SNMP agent hostname")
             .description("Network address of SNMP Agent (e.g., localhost)")
             .required(true)
@@ -74,9 +63,8 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
 
-    // Property to define the port of the SNMP agent.
     public static final PropertyDescriptor AGENT_PORT = new PropertyDescriptor.Builder()
-            .name("snmp-agent-port")
+            .name("snmp-port")
             .displayName("SNMP agent port")
             .description("Numeric value identifying the port of SNMP Agent (e.g., 161)")
             .required(true)
@@ -84,7 +72,6 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
             .addValidator(StandardValidators.PORT_VALIDATOR)
             .build();
 
-    // Property to define SNMP version.
     public static final PropertyDescriptor SNMP_VERSION = new PropertyDescriptor.Builder()
             .name("snmp-version")
             .displayName("SNMP Version")
@@ -94,19 +81,16 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
             .defaultValue("SNMPv1")
             .build();
 
-    // Property to define SNMP community.
     public static final PropertyDescriptor SNMP_COMMUNITY = new PropertyDescriptor.Builder()
             .name("snmp-community")
             .displayName("SNMP Community (v1 & v2c)")
-            .description("SNMP Community to use (e.g., public). The SNMP Community string" +
-                    " is like a user id or password that allows access to a router's or " +
-                    "other device's statistics.")
+            .description("SNMP Community to use (e.g., public) for authentication")
             .required(false)
             .defaultValue("public")
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+            .dependsOn(SNMP_VERSION, "SNMPv1", "SNMPv2c")
             .build();
 
-    // Property to define SNMP security level.
     public static final PropertyDescriptor SNMP_SECURITY_LEVEL = new PropertyDescriptor.Builder()
             .name("snmp-security-level")
             .displayName("SNMP Security Level")
@@ -116,7 +100,6 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
             .defaultValue("authPriv")
             .build();
 
-    // Property to define SNMP security name.
     public static final PropertyDescriptor SNMP_SECURITY_NAME = new PropertyDescriptor.Builder()
             .name("snmp-security-name")
             .displayName("SNMP Security name / user name")
@@ -125,17 +108,15 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
 
-    // Property to define SNMP authentication protocol.
     public static final PropertyDescriptor SNMP_AUTH_PROTOCOL = new PropertyDescriptor.Builder()
             .name("snmp-authentication-protocol")
             .displayName("SNMP Authentication Protocol")
             .description("SNMP Authentication Protocol to use")
-            .required(true)
+            .required(false)
             .allowableValues("MD5", "SHA", "")
             .defaultValue("")
             .build();
 
-    // Property to define SNMP authentication password.
     public static final PropertyDescriptor SNMP_AUTH_PASSWORD = new PropertyDescriptor.Builder()
             .name("snmp-authentication-passphrase")
             .displayName("SNMP Authentication pass phrase")
@@ -145,19 +126,17 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
             .sensitive(true)
             .build();
 
-    // Property to define SNMP private protocol.
     public static final PropertyDescriptor SNMP_PRIVACY_PROTOCOL = new PropertyDescriptor.Builder()
-            .name("snmp-privacy-protocol")
+            .name("snmp-private-protocol")
             .displayName("SNMP Privacy Protocol")
             .description("SNMP Privacy Protocol to use")
-            .required(true)
+            .required(false)
             .allowableValues("DES", "3DES", "AES128", "AES192", "AES256", "")
             .defaultValue("")
             .build();
 
-    // Property to define SNMP private password.
     public static final PropertyDescriptor SNMP_PRIVACY_PASSWORD = new PropertyDescriptor.Builder()
-            .name("snmp-privacy-protocol-passphrase")
+            .name("snmp-private-protocol-passphrase")
             .displayName("SNMP Privacy protocol pass phrase")
             .description("Pass phrase used for SNMP privacy protocol")
             .required(false)
@@ -165,7 +144,6 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
             .sensitive(true)
             .build();
 
-    // Property to define the number of SNMP retries when requesting the SNMP Agent.
     public static final PropertyDescriptor SNMP_RETRIES = new PropertyDescriptor.Builder()
             .name("snmp-retries")
             .displayName("Number of retries")
@@ -175,7 +153,6 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
             .addValidator(StandardValidators.INTEGER_VALIDATOR)
             .build();
 
-    // Property to define the timeout when requesting the SNMP Agent.
     public static final PropertyDescriptor SNMP_TIMEOUT = new PropertyDescriptor.Builder()
             .name("snmp-timeout")
             .displayName("Timeout (ms)")
@@ -185,18 +162,19 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
             .addValidator(StandardValidators.INTEGER_VALIDATOR)
             .build();
 
-    protected AbstractTarget target;
-    protected Snmp snmpClient;
+    protected volatile SNMPRequestHandler snmpRequestHandler;
 
     public void initSnmpClient(ProcessContext context) {
         final String clientPort = context.getProperty(SNMP_CLIENT_PORT).getValue();
+
+        SNMPVersion version = SNMPVersion.getEnumByDisplayName(context.getProperty(SNMP_VERSION).getValue());
 
         final TargetConfiguration configuration = new TargetConfigurationBuilder()
                 .setAgentHost(context.getProperty(AGENT_HOST).getValue())
                 .setAgentPort(context.getProperty(AGENT_PORT).toString())
                 .setRetries(context.getProperty(SNMP_RETRIES).asInteger())
                 .setTimeout(context.getProperty(SNMP_TIMEOUT).asInteger())
-                .setVersion(context.getProperty(SNMP_VERSION).getValue())
+                .setVersion(version)
                 .setAuthProtocol(context.getProperty(SNMP_AUTH_PROTOCOL).getValue())
                 .setAuthPassword(context.getProperty(SNMP_AUTH_PASSWORD).getValue())
                 .setPrivacyProtocol(context.getProperty(SNMP_PRIVACY_PROTOCOL).getValue())
@@ -204,11 +182,9 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
                 .setSecurityName(context.getProperty(SNMP_SECURITY_NAME).getValue())
                 .setSecurityLevel(context.getProperty(SNMP_SECURITY_LEVEL).getValue())
                 .setCommunityString(context.getProperty(SNMP_COMMUNITY).getValue())
-                .createSecurityConfiguration();
+                .build();
 
-        snmpClient = SNMPClientFactory.createSnmpClient(configuration, clientPort);
-        initializeSnmpClient();
-        target = TargetFactory.createTarget(configuration);
+        snmpRequestHandler = new SNMPRequestHandler(configuration, clientPort);
     }
 
     /**
@@ -216,14 +192,8 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
      */
     @OnStopped
     public void close() {
-        if (snmpClient != null) {
-            try {
-                snmpClient.close();
-            } catch (IOException e) {
-                final String errorMessage = "Could not close SNMP client.";
-                LOGGER.error(errorMessage, e);
-                throw new CloseSNMPClientException(errorMessage);
-            }
+        if (snmpRequestHandler != null) {
+            snmpRequestHandler.close();
         }
     }
 
@@ -234,28 +204,26 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
     protected Collection<ValidationResult> customValidate(ValidationContext validationContext) {
         final List<ValidationResult> problems = new ArrayList<>(super.customValidate(validationContext));
 
+        SNMPVersion version = SNMPVersion.getEnumByDisplayName(validationContext.getProperty(SNMP_VERSION).getValue());
+
         final TargetConfiguration targetConfiguration = new TargetConfigurationBuilder()
-                .setVersion(validationContext.getProperty(SNMP_VERSION).getValue())
-                .setAuthProtocol(validationContext.getProperty(SNMP_SECURITY_NAME).getValue())
-                .setAuthPassword(validationContext.getProperty(SNMP_AUTH_PROTOCOL).getValue())
-                .setPrivacyProtocol(validationContext.getProperty(SNMP_AUTH_PASSWORD).getValue())
-                .setPrivacyPassword(validationContext.getProperty(SNMP_PRIVACY_PROTOCOL).getValue())
-                .setSecurityName(validationContext.getProperty(SNMP_PRIVACY_PASSWORD).getValue())
+                .setAgentHost(validationContext.getProperty(AGENT_HOST).getValue())
+                .setAgentPort(validationContext.getProperty(AGENT_PORT).toString())
+                .setRetries(validationContext.getProperty(SNMP_RETRIES).asInteger())
+                .setTimeout(validationContext.getProperty(SNMP_TIMEOUT).asInteger())
+                .setVersion(version)
+                .setAuthProtocol(validationContext.getProperty(SNMP_AUTH_PROTOCOL).getValue())
+                .setAuthPassword(validationContext.getProperty(SNMP_AUTH_PASSWORD).getValue())
+                .setPrivacyProtocol(validationContext.getProperty(SNMP_PRIVACY_PROTOCOL).getValue())
+                .setPrivacyPassword(validationContext.getProperty(SNMP_PRIVACY_PASSWORD).getValue())
+                .setSecurityName(validationContext.getProperty(SNMP_SECURITY_NAME).getValue())
                 .setSecurityLevel(validationContext.getProperty(SNMP_SECURITY_LEVEL).getValue())
                 .setCommunityString(validationContext.getProperty(SNMP_COMMUNITY).getValue())
-                .createSecurityConfiguration();
+                .build();
 
-        SNMPValidator SNMPValidator = new SNMPValidator(targetConfiguration, problems);
-        return SNMPValidator.validate();
+        SNMPValidator snmpValidator = new SNMPValidator(targetConfiguration, problems);
+        return snmpValidator.validate();
     }
 
-    private void initializeSnmpClient() {
-        try {
-            snmpClient.listen();
-        } catch (IOException e) {
-            final String errorMessage = "Could not start SNMP client.";
-            LOGGER.error(errorMessage, e);
-            throw new SNMPClientInitializationException(errorMessage);
-        }
-    }
+
 }

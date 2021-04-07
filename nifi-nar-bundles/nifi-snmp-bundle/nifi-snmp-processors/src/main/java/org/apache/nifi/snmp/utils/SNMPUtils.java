@@ -61,13 +61,13 @@ public class SNMPUtils {
 
     public static final Pattern OID_PATTERN = Pattern.compile("[0-9+.]*");
 
-    // Delimiter for properties name.
+    /* Delimiter for properties name. */
     public static final String SNMP_PROP_DELIMITER = "$";
 
-    // Prefix for SNMP properties in flow file.
+    /* Prefix for SNMP properties in flow file. */
     public static final String SNMP_PROP_PREFIX = "snmp" + SNMP_PROP_DELIMITER;
 
-    // List of properties name when performing simple get.
+    /* List of properties name when performing simple get. */
     private static final List<String> PROPERTY_NAMES = Arrays.asList("snmp$errorIndex", "snmp$errorStatus", "snmp$errorStatusText",
             "snmp$nonRepeaters", "snmp$requestID", "snmp$type", "snmp$variableBindings");
 
@@ -246,11 +246,10 @@ public class SNMPUtils {
     /**
      * Method to return the SNMP version number by the given the property.
      *
-     * @param snmpVersionDisplayName property
+     * @param snmpVersion property
      * @return protocol
      */
-    public static int getVersion(String snmpVersionDisplayName) {
-        final SNMPVersion snmpVersion = SNMPVersion.getEnumByDisplayName(snmpVersionDisplayName);
+    public static int getVersion(SNMPVersion snmpVersion) {
         switch (snmpVersion) {
             case SNMP_V1:
                 return SnmpConstants.version1;

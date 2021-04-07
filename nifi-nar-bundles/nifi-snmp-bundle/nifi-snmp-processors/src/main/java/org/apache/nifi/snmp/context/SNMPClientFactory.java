@@ -18,6 +18,7 @@ package org.apache.nifi.snmp.context;
 
 import org.apache.nifi.snmp.configuration.TargetConfiguration;
 import org.apache.nifi.snmp.exception.CreateSNMPClientException;
+import org.apache.nifi.snmp.exception.SNMPClientInitializationException;
 import org.apache.nifi.snmp.utils.SNMPUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,15 +35,11 @@ import org.snmp4j.transport.DefaultUdpTransportMapping;
 
 import java.io.IOException;
 
-public class SNMPClientFactory {
+public final class SNMPClientFactory {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SNMPClientFactory.class);
     private static final String DEFAULT_HOST = "0.0.0.0";
     private static final String DEFAULT_PORT = "0";
-
-    public static Snmp createSnmpClient(String clientPort) {
-        return createSimpleSnmpClient(clientPort);
-    }
 
     public static Snmp createSnmpClient(TargetConfiguration configuration, String clientPort) {
         final int snmpVersion = SNMPUtils.getVersion(configuration.getVersion());
@@ -61,8 +58,9 @@ public class SNMPClientFactory {
         } catch (IOException e) {
             String errorMessage = "Creating SNMP client failed.";
             LOGGER.error(errorMessage, e);
-            throw new CreateSNMPClientException("Creating SNMP client failed.");
+            throw new CreateSNMPClientException(errorMessage);
         }
+        initializeSnmpClient(snmp);
         return snmp;
     }
 
@@ -91,10 +89,20 @@ public class SNMPClientFactory {
                 new UsmUser(new OctetString(username), SNMPUtils.getAuth(authProtocol), authPasswordOctet,
                         SNMPUtils.getPriv(privacyProtocol), privacyPasswordOctet));
 
+        initializeSnmpClient(snmp);
         return snmp;
+    }
+
+    private static void initializeSnmpClient(Snmp snmpClient) {
+        try {
+            snmpClient.listen();
+        } catch (IOException e) {
+            final String errorMessage = "Could not start SNMP client.";
+            LOGGER.error(errorMessage, e);
+            throw new SNMPClientInitializationException(errorMessage);
+        }
     }
 
     private SNMPClientFactory() {
     }
-
 }

@@ -61,7 +61,6 @@ public class GetSNMPTest {
     public void testSnmpV1Get() throws InterruptedException {
         TestRunner runner = getTestRunner(readOnlyOID1.toString(), String.valueOf(snmpV1Agent.getPort()), "GET");
         runner.run();
-        Thread.sleep(200);
         final MockFlowFile successFF = runner.getFlowFilesForRelationship(GetSNMP.REL_SUCCESS).get(0);
         assertNotNull(successFF);
         assertEquals(OIDValue1, successFF.getAttribute(SNMPUtils.SNMP_PROP_PREFIX + readOnlyOID1.toString() + SNMPUtils.SNMP_PROP_DELIMITER + "4"));
@@ -71,7 +70,6 @@ public class GetSNMPTest {
     public void testSnmpV1Walk() throws InterruptedException {
         TestRunner runner = getTestRunner("1.3.6.1.4.1.32437", String.valueOf(snmpV1Agent.getPort()), "WALK");
         runner.run();
-        Thread.sleep(200);
         final MockFlowFile successFF = runner.getFlowFilesForRelationship(GetSNMP.REL_SUCCESS).get(0);
         assertNotNull(successFF);
         assertEquals(OIDValue1, successFF.getAttribute(SNMPUtils.SNMP_PROP_PREFIX + readOnlyOID1.toString() + SNMPUtils.SNMP_PROP_DELIMITER + "4"));
@@ -82,7 +80,6 @@ public class GetSNMPTest {
     public void testInvalidPduResultsInFailure() throws InterruptedException {
         TestRunner runner = getTestRunner("1.3.6.1.4.1.32437.0", String.valueOf(snmpV1Agent.getPort()), "GET");
         runner.run();
-        Thread.sleep(200);
         final MockFlowFile failureFF = runner.getFlowFilesForRelationship(GetSNMP.REL_FAILURE).get(0);
         assertNotNull(failureFF);
         assertEquals("No such name", failureFF.getAttribute(SNMPUtils.SNMP_PROP_PREFIX + "errorStatusText"));
@@ -96,6 +93,7 @@ public class GetSNMPTest {
         runner.setProperty(GetSNMP.SNMP_COMMUNITY, "public");
         runner.setProperty(GetSNMP.SNMP_VERSION, "SNMPv1");
         runner.setProperty(GetSNMP.SNMP_STRATEGY, strategy);
+        runner.setProperty(GetSNMP.SNMP_SECURITY_LEVEL, "noAuthNoPriv");
         return runner;
     }
 

@@ -35,7 +35,6 @@ public class SLF4JLogAdapter implements LogAdapter {
         this.logger = logger;
     }
 
-
     public boolean isDebugEnabled() {
         return logger.isDebugEnabled();
     }
@@ -50,31 +49,37 @@ public class SLF4JLogAdapter implements LogAdapter {
 
 
     public void debug(Serializable message) {
-        log(LogLevel.DEBUG, message.toString(), null);
+        if (isDebugEnabled()) {
+            logger.debug(message.toString());
+        }
     }
 
     public void info(CharSequence message) {
-        log(LogLevel.INFO, message.toString(), null);
+        if (isInfoEnabled()) {
+            logger.info(message.toString());
+        }
     }
 
     public void warn(Serializable message) {
-        log(LogLevel.WARN, message.toString(), null);
+        if (isWarnEnabled()) {
+            logger.warn(message.toString());
+        }
     }
 
     public void error(Serializable message) {
-        log(LogLevel.ERROR, message.toString(), null);
+        logger.error(message.toString());
     }
 
     public void error(CharSequence message, Throwable t) {
-        log(LogLevel.ERROR, message.toString(), t);
+        logger.error(message.toString(), t);
     }
 
     public void fatal(Object message) {
-        log(LogLevel.FATAL, message.toString(), null);
+        logger.error(message.toString());
     }
 
     public void fatal(CharSequence message, Throwable t) {
-        log(LogLevel.FATAL, message.toString(), t);
+        logger.error(message.toString(), t);
     }
 
 
@@ -100,13 +105,17 @@ public class SLF4JLogAdapter implements LogAdapter {
 
     private void log(LogLevel logLevel, String msg, Throwable t) {
         if (logLevel == LogLevel.ERROR || logLevel == LogLevel.FATAL) {
-            logger.error(msg, t);
+            if (t == null) {
+                error(msg);
+            } else {
+                error(msg, t);
+            }
         } else if (logLevel == LogLevel.WARN) {
-            logger.warn(msg);
+            warn(msg);
         } else if (logLevel == LogLevel.INFO) {
-            logger.info(msg);
+            info(msg);
         } else {
-            logger.debug(msg);
+            debug(msg);
         }
     }
 }

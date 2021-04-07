@@ -89,20 +89,14 @@ public class SNMPGetterTest {
 
     @Test
     public void testSuccessfulSnmpV1Get() throws IOException {
-        Snmp snmp = SNMPTestUtils.createSnmp();
-        CommunityTarget target = SNMPTestUtils.createCommTarget("public", LOCALHOST + "/" + snmpV1Agent.getPort(), SnmpConstants.version1);
-        SNMPGetter getter = new SNMPGetter(snmp, target, readOnlyOID1);
-        ResponseEvent response = getter.get();
+        ResponseEvent response = getResponseEvent(snmpV1Agent.getPort(), SnmpConstants.version1);
         assertEquals(OIDValue1, response.getResponse().get(0).getVariable().toString());
 
     }
 
     @Test
     public void testSuccessfulSnmpV1Walk() throws IOException {
-        Snmp snmp = SNMPTestUtils.createSnmp();
-        CommunityTarget target = SNMPTestUtils.createCommTarget("public", LOCALHOST + "/" + snmpV1Agent.getPort(), SnmpConstants.version1);
-        SNMPGetter getter = new SNMPGetter(snmp, target, new OID("1.3.6.1.4.1.32437"));
-        final List<TreeEvent> responseEvents = getter.walk();
+        final List<TreeEvent> responseEvents = getTreeEvents(snmpV1Agent.getPort(), SnmpConstants.version1);
         assertEquals(OIDValue1, responseEvents.get(0).getVariableBindings()[0].getVariable().toString());
         assertEquals(OIDValue2, responseEvents.get(1).getVariableBindings()[0].getVariable().toString());
 
@@ -110,20 +104,14 @@ public class SNMPGetterTest {
 
     @Test
     public void testSuccessfulSnmpV2Get() throws IOException {
-        Snmp snmp = SNMPTestUtils.createSnmp();
-        CommunityTarget target = SNMPTestUtils.createCommTarget("public", LOCALHOST + "/" + snmpV2Agent.getPort(), SnmpConstants.version2c);
-        SNMPGetter getter = new SNMPGetter(snmp, target, readOnlyOID1);
-        ResponseEvent response = getter.get();
+        ResponseEvent response = getResponseEvent(snmpV2Agent.getPort(), SnmpConstants.version2c);
         assertEquals(OIDValue1, response.getResponse().get(0).getVariable().toString());
 
     }
 
     @Test
     public void testSuccessfulSnmpV2Walk() throws IOException {
-        Snmp snmp = SNMPTestUtils.createSnmp();
-        CommunityTarget target = SNMPTestUtils.createCommTarget("public", LOCALHOST + "/" + snmpV2Agent.getPort(), SnmpConstants.version2c);
-        SNMPGetter getter = new SNMPGetter(snmp, target, new OID("1.3.6.1.4.1.32437"));
-        final List<TreeEvent> responseEvents = getter.walk();
+        final List<TreeEvent> responseEvents = getTreeEvents(snmpV2Agent.getPort(), SnmpConstants.version2c);
         final VariableBinding[] variableBindings = responseEvents.get(0).getVariableBindings();
         assertEquals(OIDValue1, variableBindings[0].getVariable().toString());
         assertEquals(OIDValue2, variableBindings[1].getVariable().toString());
@@ -132,24 +120,16 @@ public class SNMPGetterTest {
 
     @Test
     public void testSuccessfulSnmpV3Get() throws IOException {
-        SNMP4JSettings.setForwardRuntimeExceptions(true);
-        Snmp snmp = SNMPTestUtils.createSnmp();
-        final UserTarget userTarget = SNMPTestUtils.prepareUser(snmp, LOCALHOST + "/" + snmpV3Agent.getPort(), SecurityLevel.AUTH_NOPRIV,
-                "SHA", AuthSHA.ID, null, "SHAAuthPassword", null);
-        SNMPGetter getter = new SNMPGetter(snmp, userTarget, readOnlyOID1);
-        ResponseEvent response = getter.get();
+        SNMPRequestHandler snmpRequestHandler = getSnmpV3Getter("SHA", "SHAAuthPassword");
+        ResponseEvent response = snmpRequestHandler.get(readOnlyOID1);
         assertEquals(OIDValue1, response.getResponse().get(0).getVariable().toString());
 
     }
 
     @Test
     public void testUnauthorizedUserSnmpV3GetReturnsNull() throws IOException {
-        SNMP4JSettings.setForwardRuntimeExceptions(true);
-        Snmp snmp = SNMPTestUtils.createSnmp();
-        final UserTarget userTarget = SNMPTestUtils.prepareUser(snmp, LOCALHOST + "/" + snmpV3Agent.getPort(), SecurityLevel.AUTH_NOPRIV,
-                "FakeUserName", AuthSHA.ID, null, "FakeAuthPassword", null);
-        SNMPGetter getter = new SNMPGetter(snmp, userTarget, readOnlyOID1);
-        ResponseEvent response = getter.get();
+        SNMPRequestHandler snmpRequestHandler = getSnmpV3Getter("FakeUserName", "FakeAuthPassword");
+        ResponseEvent response = snmpRequestHandler.get(readOnlyOID1);
         assertEquals("Null", response.getResponse().get(0).getVariable().toString());
 
     }
@@ -158,8 +138,8 @@ public class SNMPGetterTest {
     public void testSnmpV1GetTimeoutReturnsNull() throws IOException {
         Snmp snmp = SNMPTestUtils.createSnmp();
         CommunityTarget target = SNMPTestUtils.createCommTarget("public", "127.0.0.2/" + snmpV1Agent.getPort(), SnmpConstants.version1);
-        SNMPGetter getter = new SNMPGetter(snmp, target, readOnlyOID1);
-        ResponseEvent response = getter.get();
+        SNMPRequestHandler snmpRequestHandler = new SNMPRequestHandler(snmp, target);
+        ResponseEvent response = snmpRequestHandler.get(readOnlyOID1);
         assertNull(response.getResponse());
     }
 
@@ -167,8 +147,31 @@ public class SNMPGetterTest {
     public void testSnmpV1GetWithInvalidTargetThrowsException() throws IOException {
         Snmp snmp = SNMPTestUtils.createSnmp();
         CommunityTarget target = SNMPTestUtils.createCommTarget("public", LOCALHOST + "/" + snmpV1Agent.getPort(), -1);
-        SNMPGetter getter = new SNMPGetter(snmp, target, readOnlyOID1);
-        getter.get();
+        SNMPRequestHandler snmpRequestHandler = new SNMPRequestHandler(snmp, target);
+        snmpRequestHandler.get(readOnlyOID1);
 
+    }
+
+    private ResponseEvent getResponseEvent(int port, int version) throws IOException {
+        Snmp snmp = SNMPTestUtils.createSnmp();
+        CommunityTarget target = SNMPTestUtils.createCommTarget("public", LOCALHOST + "/" + port, version);
+        SNMPRequestHandler snmpRequestHandler = new SNMPRequestHandler(snmp, target);
+        return snmpRequestHandler.get(readOnlyOID1);
+    }
+
+
+    private SNMPRequestHandler getSnmpV3Getter(String sha, String shaAuthPassword) throws IOException {
+        SNMP4JSettings.setForwardRuntimeExceptions(true);
+        Snmp snmp = SNMPTestUtils.createSnmp();
+        final UserTarget userTarget = SNMPTestUtils.prepareUser(snmp, LOCALHOST + "/" + snmpV3Agent.getPort(), SecurityLevel.AUTH_NOPRIV,
+                sha, AuthSHA.ID, null, shaAuthPassword, null);
+        return new SNMPRequestHandler(snmp, userTarget);
+    }
+
+    private List<TreeEvent> getTreeEvents(int port, int version) throws IOException {
+        Snmp snmp = SNMPTestUtils.createSnmp();
+        CommunityTarget target = SNMPTestUtils.createCommTarget("public", LOCALHOST + "/" + port, version);
+        SNMPRequestHandler snmpRequestHandler = new SNMPRequestHandler(snmp, target);
+        return snmpRequestHandler.walk(new OID("1.3.6.1.4.1.32437"));
     }
 }

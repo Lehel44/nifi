@@ -27,9 +27,6 @@ import java.util.Iterator;
 
 public class SLF4JLogFactory extends LogFactory {
 
-    public SLF4JLogFactory() {
-    }
-
     @Override
     protected LogAdapter createLogger(Class c) {
         return new SLF4JLogAdapter(LoggerFactory.getLogger(c.getName()));
@@ -47,6 +44,6 @@ public class SLF4JLogFactory extends LogFactory {
 
     @Override
     public Iterator loggers() {
-        return null;
+        throw new UnsupportedOperationException("Iterators are currently not supported!");
     }
 }

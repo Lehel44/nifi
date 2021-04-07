@@ -16,13 +16,15 @@
  */
 package org.apache.nifi.snmp.configuration;
 
+import org.apache.nifi.snmp.utils.SNMPVersion;
+
 public class TargetConfiguration {
 
     private final String agentHost;
     private final String agentPort;
     private final int retries;
     private final int timeout;
-    private final String version;
+    private final SNMPVersion version;
     private final String authProtocol;
     private final String authPassword;
     private final String privacyProtocol;
@@ -31,18 +33,18 @@ public class TargetConfiguration {
     private final String securityLevel;
     private final String communityString;
 
-    public TargetConfiguration(final String agentHost,
-                               final String agentPort,
-                               final int retries,
-                               final int timeout,
-                               final String version,
-                               final String authProtocol,
-                               final String authPassword,
-                               final String privacyProtocol,
-                               final String privacyPassword,
-                               final String securityName,
-                               final String securityLevel,
-                               final String communityString) {
+    TargetConfiguration(final String agentHost,
+                        final String agentPort,
+                        final int retries,
+                        final int timeout,
+                        final SNMPVersion version,
+                        final String authProtocol,
+                        final String authPassword,
+                        final String privacyProtocol,
+                        final String privacyPassword,
+                        final String securityName,
+                        final String securityLevel,
+                        final String communityString) {
         this.agentHost = agentHost;
         this.agentPort = agentPort;
         this.retries = retries;
@@ -73,7 +75,7 @@ public class TargetConfiguration {
         return timeout;
     }
 
-    public String getVersion() {
+    public SNMPVersion getVersion() {
         return version;
     }
 

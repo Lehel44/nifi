@@ -31,7 +31,6 @@ import org.apache.nifi.processor.Processor;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
-import org.apache.nifi.snmp.operations.SNMPGetter;
 import org.apache.nifi.snmp.utils.SNMPStrategy;
 import org.apache.nifi.snmp.utils.SNMPUtils;
 import org.apache.nifi.snmp.validators.OIDValidator;
@@ -128,14 +127,11 @@ public class GetSNMP extends AbstractSNMPProcessor {
 
     private static final String PARAMETERS_ARE_INCORRECT_ERROR_MESSAGE = "Get request timed out or parameters are incorrect.";
 
-    private SNMPGetter snmpGetter;
 
     @OnScheduled
     @Override
     public void initSnmpClient(ProcessContext context) {
         super.initSnmpClient(context);
-        String oid = context.getProperty(OID).getValue();
-        snmpGetter = new SNMPGetter(snmpClient, target, new OID(oid));
     }
 
     /**
@@ -149,38 +145,46 @@ public class GetSNMP extends AbstractSNMPProcessor {
      */
     @Override
     public void onTrigger(ProcessContext context, ProcessSession processSession) {
-        final String targetUri = target.getAddress().toString();
+        final String targetUri = snmpRequestHandler.getTarget().getAddress().toString();
         final SNMPStrategy snmpStrategy = SNMPStrategy.valueOf(context.getProperty(SNMP_STRATEGY).getValue());
         final String oid = context.getProperty(OID).getValue();
 
         if (SNMPStrategy.GET == snmpStrategy) {
-            final ResponseEvent response = snmpGetter.get();
-            if (response.getResponse() != null) {
-                PDU pdu = response.getResponse();
-                FlowFile flowFile = createFlowFile(context, processSession, pdu);
-                processSession.getProvenanceReporter().receive(flowFile, targetUri + "/" + oid);
-                if (pdu.getErrorStatus() == PDU.noError) {
-                    processSession.transfer(flowFile, REL_SUCCESS);
-                } else {
-                    processSession.transfer(flowFile, REL_FAILURE);
-                }
-            } else {
-                getLogger().error(PARAMETERS_ARE_INCORRECT_ERROR_MESSAGE);
-                context.yield();
-            }
+            performSnmpGet(context, processSession, targetUri, oid);
         } else if (SNMPStrategy.WALK == snmpStrategy) {
-            final List<TreeEvent> events = snmpGetter.walk();
-            if (areValidEvents(events)) {
-                FlowFile flowFile = processSession.create();
-                for (TreeEvent treeEvent : events) {
-                    flowFile = SNMPUtils.updateFlowFileAttributesWithTreeEventProperties(treeEvent, flowFile, processSession);
-                }
-                processSession.getProvenanceReporter().receive(flowFile, targetUri + "/" + oid);
+            performSnmpWalk(context, processSession, targetUri, oid);
+        }
+    }
+
+    private void performSnmpWalk(ProcessContext context, ProcessSession processSession, String targetUri, String oid) {
+        final List<TreeEvent> events = snmpRequestHandler.walk(new OID(oid));
+        if (areValidEvents(events)) {
+            FlowFile flowFile = processSession.create();
+            for (TreeEvent treeEvent : events) {
+                flowFile = SNMPUtils.updateFlowFileAttributesWithTreeEventProperties(treeEvent, flowFile, processSession);
+            }
+            processSession.getProvenanceReporter().receive(flowFile, targetUri + "/" + oid);
+            processSession.transfer(flowFile, REL_SUCCESS);
+        } else {
+            getLogger().error(PARAMETERS_ARE_INCORRECT_ERROR_MESSAGE);
+            context.yield();
+        }
+    }
+
+    private void performSnmpGet(ProcessContext context, ProcessSession processSession, String targetUri, String oid) {
+        final ResponseEvent response = snmpRequestHandler.get(new OID(oid));
+        if (response.getResponse() != null) {
+            PDU pdu = response.getResponse();
+            FlowFile flowFile = createFlowFile(context, processSession, pdu);
+            processSession.getProvenanceReporter().receive(flowFile, targetUri + "/" + oid);
+            if (pdu.getErrorStatus() == PDU.noError) {
                 processSession.transfer(flowFile, REL_SUCCESS);
             } else {
-                getLogger().error(PARAMETERS_ARE_INCORRECT_ERROR_MESSAGE);
-                context.yield();
+                processSession.transfer(flowFile, REL_FAILURE);
             }
+        } else {
+            getLogger().error(PARAMETERS_ARE_INCORRECT_ERROR_MESSAGE);
+            context.yield();
         }
     }
 

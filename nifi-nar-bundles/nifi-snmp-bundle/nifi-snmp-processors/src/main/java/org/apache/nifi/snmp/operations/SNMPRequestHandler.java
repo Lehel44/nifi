@@ -17,42 +17,42 @@
 package org.apache.nifi.snmp.operations;
 
 import org.apache.nifi.processor.exception.ProcessException;
+import org.apache.nifi.snmp.configuration.TargetConfiguration;
+import org.apache.nifi.snmp.context.SNMPClientFactory;
+import org.apache.nifi.snmp.context.TargetFactory;
+import org.apache.nifi.snmp.exception.CloseSNMPClientException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.snmp4j.AbstractTarget;
 import org.snmp4j.PDU;
-import org.snmp4j.ScopedPDU;
 import org.snmp4j.Snmp;
 import org.snmp4j.event.ResponseEvent;
-import org.snmp4j.mp.SnmpConstants;
 import org.snmp4j.smi.OID;
 import org.snmp4j.smi.VariableBinding;
 import org.snmp4j.util.DefaultPDUFactory;
+import org.snmp4j.util.PDUFactory;
 import org.snmp4j.util.TreeEvent;
 import org.snmp4j.util.TreeUtils;
 
 import java.io.IOException;
 import java.util.List;
 
-/**
- * Extension of {@link SNMPRequest} to perform SNMP Get and SNMP Walk requests.
- */
-public final class SNMPGetter extends SNMPRequest {
+public class SNMPRequestHandler {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SNMPGetter.class);
-    private final OID oid;
+    private static final Logger LOGGER = LoggerFactory.getLogger(SNMPRequestHandler.class);
+    private final Snmp snmpClient;
+    private final AbstractTarget target;
+    private PDUFactory pduFactory;
 
-    /**
-     * Creates an instance of this getter.
-     *
-     * @param snmp   instance of {@link Snmp}
-     * @param target instance of {@link AbstractTarget} to request
-     * @param oid    instance of {@link OID} to request
-     */
-    public SNMPGetter(Snmp snmp, AbstractTarget target, OID oid) {
-        super(snmp, target);
-        this.oid = oid;
-        LOGGER.info("Successfully initialized SNMP Getter");
+    public SNMPRequestHandler(TargetConfiguration configuration, String clientPort) {
+        snmpClient = SNMPClientFactory.createSnmpClient(configuration, clientPort);
+        target = TargetFactory.createTarget(configuration);
+        pduFactory = new DefaultPDUFactory();
+    }
+
+    public SNMPRequestHandler(Snmp snmpClient, AbstractTarget target) {
+        this.snmpClient = snmpClient;
+        this.target = target;
     }
 
     /**
@@ -61,17 +61,12 @@ public final class SNMPGetter extends SNMPRequest {
      *
      * @return {@link ResponseEvent}
      */
-    public ResponseEvent get() {
+    public ResponseEvent get(OID oid) {
         try {
-            PDU pdu;
-            if (target.getVersion() == SnmpConstants.version3) {
-                pdu = new ScopedPDU();
-            } else {
-                pdu = new PDU();
-            }
+            PDU pdu = pduFactory.createPDU(target);
             pdu.add(new VariableBinding(oid));
             pdu.setType(PDU.GET);
-            return snmp.get(pdu, target);
+            return snmpClient.get(pdu, target);
         } catch (IOException e) {
             LOGGER.error("Failed to get information from SNMP agent; {}", this, e);
             throw new ProcessException(e);
@@ -84,16 +79,41 @@ public final class SNMPGetter extends SNMPRequest {
      * @return the list of {@link TreeEvent}
      */
     @SuppressWarnings("unchecked")
-    public List<TreeEvent> walk() {
-        TreeUtils treeUtils = new TreeUtils(snmp, new DefaultPDUFactory());
+    public List<TreeEvent> walk(OID oid) {
+        TreeUtils treeUtils = new TreeUtils(snmpClient, new DefaultPDUFactory());
         return treeUtils.getSubtree(target, oid);
     }
 
     /**
-     * @see SNMPRequest#toString()
+     * Executes the SNMP set request and returns the response.
+     *
+     * @param pdu PDU to send
+     * @return Response event
+     * @throws IOException IO Exception
+     */
+    public ResponseEvent set(PDU pdu) throws IOException {
+        return snmpClient.set(pdu, target);
+    }
+
+    public void close() {
+        try {
+            snmpClient.close();
+        } catch (IOException e) {
+            final String errorMessage = "Could not close SNMP client.";
+            LOGGER.error(errorMessage, e);
+            throw new CloseSNMPClientException(errorMessage);
+        }
+    }
+
+    public AbstractTarget getTarget() {
+        return target;
+    }
+
+    /**
+     * @see java.lang.Object#toString()
      */
     @Override
     public String toString() {
-        return super.toString() + ", OID:" + this.oid.toString();
+        return getClass().getSimpleName() + ":" + snmpClient.toString();
     }
 }

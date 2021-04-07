@@ -19,6 +19,7 @@ package org.apache.nifi.snmp.context;
 import org.apache.nifi.remote.io.socket.NetworkUtils;
 import org.apache.nifi.snmp.configuration.TargetConfiguration;
 import org.apache.nifi.snmp.configuration.TargetConfigurationBuilder;
+import org.apache.nifi.snmp.utils.SNMPVersion;
 import org.junit.Test;
 import org.mockito.internal.util.collections.Iterables;
 import org.snmp4j.Snmp;
@@ -56,8 +57,8 @@ public class SNMPClientFactoryTest {
     public void testFactoryCreatesSnmpV1V2cClientWithCorrectTransportMapping() {
         String clientPort = String.valueOf(NetworkUtils.availablePort());
         TargetConfiguration configuration = configurationBuilder
-                .setVersion("SNMPv1")
-                .createSecurityConfiguration();
+                .setVersion(SNMPVersion.SNMP_V1)
+                .build();
 
         Snmp snmp = SNMPClientFactory.createSnmpClient(configuration, clientPort);
 
@@ -82,8 +83,8 @@ public class SNMPClientFactoryTest {
     public void testSnmpV3ClientWithoutCorrespondingAgentDoesNotHaveUSM() throws IOException {
         String clientPort = String.valueOf(NetworkUtils.availablePort());
         TargetConfiguration configuration = configurationBuilder
-                .setVersion("SNMPv3")
-                .createSecurityConfiguration();
+                .setVersion(SNMPVersion.SNMP_V3)
+                .build();
 
         final Snmp snmpClient = SNMPClientFactory.createSnmpClient(configuration, clientPort);
         final UsmUser user = snmpClient.getUSM().getUserTable().getUser(new OctetString("userName")).getUsmUser();

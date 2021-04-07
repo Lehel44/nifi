@@ -28,7 +28,7 @@ import org.snmp4j.smi.UdpAddress;
 
 import java.util.Optional;
 
-public class TargetFactory {
+public final class TargetFactory {
 
     public static AbstractTarget createTarget(TargetConfiguration configuration) {
         final int snmpVersion = SNMPUtils.getVersion(configuration.getVersion());
