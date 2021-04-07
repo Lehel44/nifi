@@ -208,6 +208,7 @@ public class SNMPUtils {
      * @return protocol
      */
     public static OID getPriv(String privProtocolDisplayName) {
+        // TODO-8325: use map
         final PrivacyProtocol privProtocol = PrivacyProtocol.getEnumByDisplayName(privProtocolDisplayName);
         switch (privProtocol) {
             case DES:
@@ -232,6 +233,7 @@ public class SNMPUtils {
      * @return protocol
      */
     public static OID getAuth(String authProtocol) {
+        //TODO-8325: use map, eliminate enum
         final AuthenticationProtocol protocol = AuthenticationProtocol.valueOf(authProtocol);
         switch (protocol) {
             case SHA:
@@ -250,6 +252,7 @@ public class SNMPUtils {
      * @return protocol
      */
     public static int getVersion(SNMPVersion snmpVersion) {
+        // TODO-8325: use map
         switch (snmpVersion) {
             case SNMP_V1:
                 return SnmpConstants.version1;

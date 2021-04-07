@@ -47,7 +47,7 @@ public class SNMPValidator {
                     .valid(false)
                     .explanation("SNMP Security Name must be set with SNMPv3.")
                     .build());
-            checkSecurityLevel(targetConfiguration, problems);
+            checkSecurityLevel();
 
         } else if (isCommunityStringInvalid) {
             problems.add(new ValidationResult.Builder()
@@ -59,7 +59,7 @@ public class SNMPValidator {
         return problems;
     }
 
-    private void checkSecurityLevel(TargetConfiguration targetConfiguration, List<ValidationResult> problems) {
+    private void checkSecurityLevel() {
 
         final boolean isAuthProtocolInvalid = isInvalid(targetConfiguration.getAuthProtocol());
         final boolean isAuthPasswordInvalid = isInvalid(targetConfiguration.getAuthPassword());

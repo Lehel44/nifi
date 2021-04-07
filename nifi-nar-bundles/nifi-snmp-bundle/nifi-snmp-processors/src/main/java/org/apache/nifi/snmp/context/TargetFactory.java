@@ -66,6 +66,7 @@ public final class TargetFactory {
         final int snmpVersion = SNMPUtils.getVersion(configuration.getVersion());
         final String host = configuration.getAgentHost();
         final String port = configuration.getAgentPort();
+        // TODO: Why are these here and in the client too?
         final int retries = configuration.getRetries();
         final int timeout = configuration.getTimeout();
 

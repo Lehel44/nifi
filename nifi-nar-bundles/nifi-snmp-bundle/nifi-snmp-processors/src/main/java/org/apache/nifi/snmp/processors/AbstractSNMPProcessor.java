@@ -45,6 +45,8 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
         LogFactory.setLogFactory(new SLF4JLogFactory());
     }
 
+    // TODO-8325: Rename these back to original. Check why CLIENT PORT needed.
+    // Shouldnt be required, rename it
     public static final PropertyDescriptor SNMP_CLIENT_PORT = new PropertyDescriptor.Builder()
             .name("snmp-client-port")
             .displayName("SNMP client port")
@@ -165,6 +167,7 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
     protected volatile SNMPRequestHandler snmpRequestHandler;
 
     public void initSnmpClient(ProcessContext context) {
+        // TODO: abstract method override in trap, separate descrption for processors, two diff property
         final String clientPort = context.getProperty(SNMP_CLIENT_PORT).getValue();
 
         SNMPVersion version = SNMPVersion.getEnumByDisplayName(context.getProperty(SNMP_VERSION).getValue());

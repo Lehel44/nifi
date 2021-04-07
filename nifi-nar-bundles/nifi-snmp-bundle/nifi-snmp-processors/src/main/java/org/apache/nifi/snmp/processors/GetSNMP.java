@@ -149,6 +149,7 @@ public class GetSNMP extends AbstractSNMPProcessor {
         final SNMPStrategy snmpStrategy = SNMPStrategy.valueOf(context.getProperty(SNMP_STRATEGY).getValue());
         final String oid = context.getProperty(OID).getValue();
 
+        // TODO-8325: check strategy class here
         if (SNMPStrategy.GET == snmpStrategy) {
             performSnmpGet(context, processSession, targetUri, oid);
         } else if (SNMPStrategy.WALK == snmpStrategy) {

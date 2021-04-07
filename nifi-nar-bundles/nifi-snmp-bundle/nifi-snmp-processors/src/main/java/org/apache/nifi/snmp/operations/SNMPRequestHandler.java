@@ -42,7 +42,7 @@ public class SNMPRequestHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(SNMPRequestHandler.class);
     private final Snmp snmpClient;
     private final AbstractTarget target;
-    private PDUFactory pduFactory;
+    private final PDUFactory pduFactory;
 
     public SNMPRequestHandler(TargetConfiguration configuration, String clientPort) {
         snmpClient = SNMPClientFactory.createSnmpClient(configuration, clientPort);
@@ -50,9 +50,11 @@ public class SNMPRequestHandler {
         pduFactory = new DefaultPDUFactory();
     }
 
-    public SNMPRequestHandler(Snmp snmpClient, AbstractTarget target) {
+    // TODO: VisibleForTesting, interface, pack priv class, factory, only this constructor, pduFactory inject also
+    SNMPRequestHandler(Snmp snmpClient, AbstractTarget target) {
         this.snmpClient = snmpClient;
         this.target = target;
+        pduFactory = new DefaultPDUFactory();
     }
 
     /**
