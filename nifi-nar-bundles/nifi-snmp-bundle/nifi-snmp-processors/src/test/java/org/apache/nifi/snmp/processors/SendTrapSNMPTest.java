@@ -53,6 +53,7 @@ public class SendTrapSNMPTest {
         int specificTrapType = 2;
         OID trapOID = new OID("1.3.6.1.4.1.1234.2.1.51");
         String managerAddress = "1.2.3.5";
+        // TODO: change name
         String trapOIDValue = "HAHAHA";
         int sysUpTime = 5000;
 

@@ -61,6 +61,7 @@ public class ListenTrapSNMPTest {
         try {
             SNMPTrapSender trapSender = new SNMPTrapSender(snmp, target);
             trapSender.generateTrap(sysUpTime, enterpriseOID, agentAddress, genericTrapType, specificTrapType, trapOID, managerAddress, trapOIDValue);
+            // TODO-3328: Countdownlatch
             Thread.sleep(200);
             final MockFlowFile successFF = runner.getFlowFilesForRelationship(GetSNMP.REL_SUCCESS).get(0);
             assertNotNull(successFF);
