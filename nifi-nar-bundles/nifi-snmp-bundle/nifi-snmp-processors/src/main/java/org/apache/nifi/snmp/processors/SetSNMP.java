@@ -106,7 +106,7 @@ public class SetSNMP extends AbstractSNMPProcessor {
 
     private void processPdu(ProcessContext context, ProcessSession processSession, FlowFile flowFile, PDU pdu) {
         try {
-            ResponseEvent response = snmpRequestHandler.set(pdu);
+            ResponseEvent response = standardSnmpRequestHandler.set(pdu);
             if (response.getResponse() == null) {
                 processSession.transfer(processSession.penalize(flowFile), REL_FAILURE);
                 getLogger().error("Set request timed out or parameters are incorrect.");
@@ -114,22 +114,22 @@ public class SetSNMP extends AbstractSNMPProcessor {
             } else if (response.getResponse().getErrorStatus() == PDU.noError) {
                 flowFile = SNMPUtils.updateFlowFileAttributesWithPduProperties(pdu, flowFile, processSession);
                 processSession.transfer(flowFile, REL_SUCCESS);
-                processSession.getProvenanceReporter().send(flowFile, snmpRequestHandler.getTarget().getAddress().toString());
+                processSession.getProvenanceReporter().send(flowFile, standardSnmpRequestHandler.getTarget().getAddress().toString());
             } else {
                 final String error = response.getResponse().getErrorStatusText();
                 flowFile = SNMPUtils.addAttribute(SNMPUtils.SNMP_PROP_PREFIX + "error", error, flowFile, processSession);
                 processSession.transfer(processSession.penalize(flowFile), REL_FAILURE);
-                getLogger().error("Failed while executing SNMP Set [{}] via {}. Error = {}", response.getRequest().getVariableBindings(), snmpRequestHandler, error);
+                getLogger().error("Failed while executing SNMP Set [{}] via {}. Error = {}", response.getRequest().getVariableBindings(), standardSnmpRequestHandler, error);
             }
         } catch (IOException e) {
             processSession.transfer(processSession.penalize(flowFile), REL_FAILURE);
-            getLogger().error("Failed while executing SNMP Set via " + snmpRequestHandler, e);
+            getLogger().error("Failed while executing SNMP Set via " + standardSnmpRequestHandler, e);
             context.yield();
         }
     }
 
     private PDU createPdu() {
-        if (snmpRequestHandler.getTarget().getVersion() == SnmpConstants.version3) {
+        if (standardSnmpRequestHandler.getTarget().getVersion() == SnmpConstants.version3) {
             return new ScopedPDU();
         } else {
             return new PDU();

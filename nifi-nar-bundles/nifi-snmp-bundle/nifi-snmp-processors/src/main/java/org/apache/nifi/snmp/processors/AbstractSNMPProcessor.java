@@ -26,7 +26,7 @@ import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.snmp.configuration.TargetConfiguration;
 import org.apache.nifi.snmp.configuration.TargetConfigurationBuilder;
 import org.apache.nifi.snmp.logging.SLF4JLogFactory;
-import org.apache.nifi.snmp.operations.SNMPRequestHandler;
+import org.apache.nifi.snmp.operations.StandardSNMPRequestHandler;
 import org.apache.nifi.snmp.utils.SNMPVersion;
 import org.apache.nifi.snmp.validators.SNMPValidator;
 import org.snmp4j.log.LogFactory;
@@ -164,7 +164,7 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
             .addValidator(StandardValidators.INTEGER_VALIDATOR)
             .build();
 
-    protected volatile SNMPRequestHandler snmpRequestHandler;
+    protected volatile StandardSNMPRequestHandler standardSnmpRequestHandler;
 
     public void initSnmpClient(ProcessContext context) {
         // TODO: abstract method override in trap, separate descrption for processors, two diff property
@@ -187,7 +187,7 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
                 .setCommunityString(context.getProperty(SNMP_COMMUNITY).getValue())
                 .build();
 
-        snmpRequestHandler = new SNMPRequestHandler(configuration, clientPort);
+        standardSnmpRequestHandler = new StandardSNMPRequestHandler(configuration, clientPort);
     }
 
     /**
@@ -195,8 +195,8 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
      */
     @OnStopped
     public void close() {
-        if (snmpRequestHandler != null) {
-            snmpRequestHandler.close();
+        if (standardSnmpRequestHandler != null) {
+            standardSnmpRequestHandler.close();
         }
     }
 

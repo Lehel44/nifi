@@ -145,7 +145,7 @@ public class GetSNMP extends AbstractSNMPProcessor {
      */
     @Override
     public void onTrigger(ProcessContext context, ProcessSession processSession) {
-        final String targetUri = snmpRequestHandler.getTarget().getAddress().toString();
+        final String targetUri = standardSnmpRequestHandler.getTarget().getAddress().toString();
         final SNMPStrategy snmpStrategy = SNMPStrategy.valueOf(context.getProperty(SNMP_STRATEGY).getValue());
         final String oid = context.getProperty(OID).getValue();
 
@@ -158,7 +158,7 @@ public class GetSNMP extends AbstractSNMPProcessor {
     }
 
     private void performSnmpWalk(ProcessContext context, ProcessSession processSession, String targetUri, String oid) {
-        final List<TreeEvent> events = snmpRequestHandler.walk(new OID(oid));
+        final List<TreeEvent> events = standardSnmpRequestHandler.walk(new OID(oid));
         if (areValidEvents(events)) {
             FlowFile flowFile = processSession.create();
             for (TreeEvent treeEvent : events) {
@@ -173,7 +173,7 @@ public class GetSNMP extends AbstractSNMPProcessor {
     }
 
     private void performSnmpGet(ProcessContext context, ProcessSession processSession, String targetUri, String oid) {
-        final ResponseEvent response = snmpRequestHandler.get(new OID(oid));
+        final ResponseEvent response = standardSnmpRequestHandler.get(new OID(oid));
         if (response.getResponse() != null) {
             PDU pdu = response.getResponse();
             FlowFile flowFile = createFlowFile(context, processSession, pdu);
