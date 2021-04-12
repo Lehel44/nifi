@@ -16,6 +16,7 @@
  */
 package org.apache.nifi.processor.util;
 
+import org.apache.commons.validator.routines.InetAddressValidator;
 import org.apache.nifi.components.PropertyValue;
 import org.apache.nifi.components.ValidationContext;
 import org.apache.nifi.components.ValidationResult;
@@ -146,6 +147,15 @@ public class StandardValidators {
             }
 
             return new ValidationResult.Builder().subject(subject).input(value).explanation(reason).valid(reason == null).build();
+        }
+    };
+
+    public static final Validator NETWORK_ADDRESS_VALIDATOR = new Validator() {
+        @Override
+        public ValidationResult validate(final String subject, final String value, final ValidationContext context) {
+            final String reason = "not a valid IP address";
+            final boolean isValidInetAddress = InetAddressValidator.getInstance().isValid(value);
+            return new ValidationResult.Builder().subject(subject).input(value).explanation(reason).valid(isValidInetAddress).build();
         }
     };
 

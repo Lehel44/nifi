@@ -66,8 +66,4 @@ public class SNMPTrapReceiver implements CommandResponder {
         flowFile = SNMPUtils.updateFlowFileAttributesWithPduProperties(pdu, flowFile, processSession);
         return flowFile;
     }
-
-    public Snmp getSnmp() {
-        return snmp;
-    }
 }

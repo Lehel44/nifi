@@ -16,17 +16,21 @@
  */
 package org.apache.nifi.snmp.processors;
 
+import org.apache.nifi.annotation.behavior.InputRequirement;
+import org.apache.nifi.annotation.documentation.CapabilityDescription;
+import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.components.PropertyDescriptor;
+import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.processor.Processor;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
+import org.apache.nifi.snmp.configuration.TrapConfiguration;
+import org.apache.nifi.snmp.configuration.TrapConfigurationBuilder;
 import org.apache.nifi.snmp.operations.SNMPTrapSender;
-import org.snmp4j.smi.OID;
-import org.snmp4j.smi.TimeTicks;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -34,6 +38,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Receiving data from configured SNMP agent which, upon each invocation of
+ * {@link #onTrigger(ProcessContext, ProcessSession)} method, will construct a
+ * {@link FlowFile} containing in its properties the information retrieved.
+ * The output {@link FlowFile} won't have any content.
+ */
+@Tags({"snmp", "send", "trap"})
+@InputRequirement(InputRequirement.Requirement.INPUT_FORBIDDEN)
+@CapabilityDescription("Sends information to SNMP Manager.")
 public class SendTrapSNMP extends AbstractSNMPProcessor {
 
     public static final PropertyDescriptor ENTERPRISE_OID = new PropertyDescriptor.Builder()
@@ -49,7 +62,7 @@ public class SendTrapSNMP extends AbstractSNMPProcessor {
             .displayName("Agent IP address")
             .description("The sender IP address")
             .required(false)
-            .addValidator(StandardValidators.NON_BLANK_VALIDATOR)
+            .addValidator(StandardValidators.NETWORK_ADDRESS_VALIDATOR)
             .build();
 
     public static final PropertyDescriptor GENERIC_TRAP_TYPE = new PropertyDescriptor.Builder()
@@ -67,7 +80,7 @@ public class SendTrapSNMP extends AbstractSNMPProcessor {
                     "the trap in the case of traps of generic type 6 (enterpriseSpecific). The interpretation of this " +
                     "code is vendor-specific")
             .required(false)
-            .addValidator(StandardValidators.INTEGER_VALIDATOR)
+            .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
             .build();
 
     public static final PropertyDescriptor TRAP_OID = new PropertyDescriptor.Builder()
@@ -141,13 +154,24 @@ public class SendTrapSNMP extends AbstractSNMPProcessor {
             REL_FAILURE
     )));
 
-    private SNMPTrapSender snmpTrapSender;
+    private volatile SNMPTrapSender snmpTrapSender;
+    private volatile TrapConfiguration trapConfiguration;
 
     @OnScheduled
     @Override
     public void initSnmpClient(ProcessContext context) {
         super.initSnmpClient(context);
         snmpTrapSender = new SNMPTrapSender(snmpClient, target);
+        trapConfiguration = new TrapConfigurationBuilder()
+                .setEnterpriseOid(context.getProperty(ENTERPRISE_OID).getValue())
+                .setAgentAddress(context.getProperty(AGENT_ADDRESS).getValue())
+                .setManagerAddress(context.getProperty(MANAGER_ADDRESS).getValue())
+                .setGenericTrapType(Integer.parseInt(context.getProperty(GENERIC_TRAP_TYPE).getValue()))
+                .setSpecificTrapType(Integer.parseInt(context.getProperty(SPECIFIC_TRAP_TYPE).getValue()))
+                .setTrapOidKey(context.getProperty(TRAP_OID).getValue())
+                .setTrapOidValue(context.getProperty(TRAP_OID_VALUE).getValue())
+                .setSysUptime(context.getProperty(SYSTEM_UPTIME).asInteger())
+                .build();
     }
 
     /**
@@ -161,17 +185,7 @@ public class SendTrapSNMP extends AbstractSNMPProcessor {
      */
     @Override
     public void onTrigger(ProcessContext context, ProcessSession processSession) {
-        final String enterpriseOIDValue = context.getProperty(ENTERPRISE_OID).getValue();
-        final String agentAddressValue = context.getProperty(AGENT_ADDRESS).getValue();
-        final int genericTrapTypeValue = Integer.parseInt(context.getProperty(GENERIC_TRAP_TYPE).getValue());
-        final int specificTrapTypeValue = Integer.parseInt(context.getProperty(SPECIFIC_TRAP_TYPE).getValue());
-        final String trapOIDKey = context.getProperty(TRAP_OID).getValue();
-        final String managerAddressValue = context.getProperty(MANAGER_ADDRESS).getValue();
-        final String trapOIDValueValue = context.getProperty(TRAP_OID_VALUE).getValue();
-        final int sysUpTimeValue = context.getProperty(SYSTEM_UPTIME).asInteger();
-
-        snmpTrapSender.generateTrap(new TimeTicks(sysUpTimeValue), enterpriseOIDValue, agentAddressValue, genericTrapTypeValue, specificTrapTypeValue,
-                new OID(trapOIDKey), managerAddressValue, trapOIDValueValue);
+        snmpTrapSender.sendTrap(trapConfiguration);
     }
 
     @Override

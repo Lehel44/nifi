@@ -50,7 +50,7 @@ import java.util.Set;
 @Tags({"snmp", "set", "oid"})
 @InputRequirement(Requirement.INPUT_REQUIRED)
 @CapabilityDescription("Based on incoming FlowFile attributes, the processor will execute SNMP Set requests." +
-        " When founding attributes with name like snmp$<OID>, the processor will atempt to set the value of" +
+        " When founding attributes with name like snmp$<OID>, the processor will attempt to set the value of" +
         " attribute to the corresponding OID given in the attribute name")
 public class SetSNMP extends AbstractSNMPProcessor {
 

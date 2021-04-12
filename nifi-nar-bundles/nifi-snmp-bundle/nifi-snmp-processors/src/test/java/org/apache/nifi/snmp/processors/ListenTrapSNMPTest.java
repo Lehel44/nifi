@@ -17,6 +17,8 @@
 package org.apache.nifi.snmp.processors;
 
 import org.apache.nifi.remote.io.socket.NetworkUtils;
+import org.apache.nifi.snmp.configuration.TrapConfiguration;
+import org.apache.nifi.snmp.configuration.TrapConfigurationBuilder;
 import org.apache.nifi.snmp.context.SNMPClientFactory;
 import org.apache.nifi.snmp.helper.SNMPTestUtils;
 import org.apache.nifi.snmp.operations.SNMPTrapSender;
@@ -47,29 +49,31 @@ public class ListenTrapSNMPTest {
         runner.run(1, false);
         Thread.sleep(200);
 
-        String enterpriseOID = "1.3.6.1.4.1.1824";
-        String agentAddress = "1.2.3.4";
-        int genericTrapType = PDUv1.ENTERPRISE_SPECIFIC;
-        int specificTrapType = 2;
-        OID trapOID = new OID("1.3.6.1.4.1.1234.2.1.51");
-        String managerAddress = "1.2.3.5";
-        String trapOIDValue = "TrapOidValue";
-        TimeTicks sysUpTime = new TimeTicks(5000);
+        TrapConfiguration configuration = new TrapConfigurationBuilder()
+                .setEnterpriseOid("1.3.6.1.4.1.1824")
+                .setAgentAddress("1.2.3.4")
+                .setManagerAddress("1.2.3.5")
+                .setGenericTrapType(PDUv1.ENTERPRISE_SPECIFIC)
+                .setSpecificTrapType(2)
+                .setTrapOidKey("1.3.6.1.4.1.1234.2.1.51")
+                .setTrapOidValue("TrapOidValue")
+                .setSysUptime(5000)
+                .build();
 
         Snmp snmp = SNMPClientFactory.createSnmpClient(String.valueOf(NetworkUtils.availablePort()));
 
         try {
             SNMPTrapSender trapSender = new SNMPTrapSender(snmp, target);
-            trapSender.generateTrap(sysUpTime, enterpriseOID, agentAddress, genericTrapType, specificTrapType, trapOID, managerAddress, trapOIDValue);
+            trapSender.sendTrap(configuration);
             // TODO-3328: Countdownlatch
             Thread.sleep(200);
             final MockFlowFile successFF = runner.getFlowFilesForRelationship(GetSNMP.REL_SUCCESS).get(0);
             assertNotNull(successFF);
             assertEquals("Success", successFF.getAttribute(SNMPUtils.SNMP_PROP_PREFIX + "errorStatusText"));
-            assertEquals(trapOID.toString(), successFF.getAttribute(SNMPUtils.SNMP_PROP_PREFIX + SnmpConstants.snmpTrapOID + SNMPUtils.SNMP_PROP_DELIMITER + "6"));
-            assertEquals(managerAddress, successFF.getAttribute(SNMPUtils.SNMP_PROP_PREFIX + SnmpConstants.snmpTrapAddress + SNMPUtils.SNMP_PROP_DELIMITER + "64"));
-            assertEquals(sysUpTime.toString(), successFF.getAttribute(SNMPUtils.SNMP_PROP_PREFIX + SnmpConstants.sysUpTime + SNMPUtils.SNMP_PROP_DELIMITER + "67"));
-            assertEquals(trapOIDValue, successFF.getAttribute(SNMPUtils.SNMP_PROP_PREFIX + trapOID + SNMPUtils.SNMP_PROP_DELIMITER + "4"));
+            assertEquals(configuration.getTrapOidKey().toString(), successFF.getAttribute(SNMPUtils.SNMP_PROP_PREFIX + SnmpConstants.snmpTrapOID + SNMPUtils.SNMP_PROP_DELIMITER + "6"));
+            assertEquals(configuration.getTrapOidValue().toString(), successFF.getAttribute(SNMPUtils.SNMP_PROP_PREFIX + configuration.getTrapOidKey().toString() + SNMPUtils.SNMP_PROP_DELIMITER + "4"));
+            assertEquals(configuration.getManagerAddress(), successFF.getAttribute(SNMPUtils.SNMP_PROP_PREFIX + SnmpConstants.snmpTrapAddress + SNMPUtils.SNMP_PROP_DELIMITER + "64"));
+            assertEquals(String.valueOf(new TimeTicks(configuration.getSysUptime())), successFF.getAttribute(SNMPUtils.SNMP_PROP_PREFIX + SnmpConstants.sysUpTime + SNMPUtils.SNMP_PROP_DELIMITER + "67"));
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

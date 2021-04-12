@@ -17,6 +17,7 @@
 package org.apache.nifi.snmp.operations;
 
 import org.apache.nifi.processor.exception.ProcessException;
+import org.apache.nifi.snmp.configuration.TrapConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.snmp4j.AbstractTarget;
@@ -27,11 +28,11 @@ import org.snmp4j.event.ResponseEvent;
 import org.snmp4j.mp.SnmpConstants;
 import org.snmp4j.smi.IpAddress;
 import org.snmp4j.smi.OID;
-import org.snmp4j.smi.OctetString;
 import org.snmp4j.smi.TimeTicks;
 import org.snmp4j.smi.VariableBinding;
 
 import java.io.IOException;
+import java.util.Optional;
 
 public class SNMPTrapSender extends SNMPRequest {
 
@@ -48,33 +49,43 @@ public class SNMPTrapSender extends SNMPRequest {
         super(snmp, target);
     }
 
-    public ResponseEvent generateTrap(TimeTicks sysUpTime, String enterpriseOID, String agentAddress, int genericTrapType,
-                                      int specificTrapType, OID trapOIDKey, String managerAddress, String trapOIDValue) {
+    public ResponseEvent sendTrap(TrapConfiguration configuration) {
         try {
             PDU pdu;
             if (target.getVersion() == SnmpConstants.version1) {
-                // Automatically sets type to V1TRAP.
-                PDUv1 pdu1 = new PDUv1();
-                pdu1.setEnterprise(new OID(enterpriseOID));
-                pdu1.setAgentAddress(new IpAddress(agentAddress));
-                pdu1.setGenericTrap(genericTrapType);
-                pdu1.setSpecificTrap(specificTrapType);
-                pdu = pdu1;
+                pdu = createV1Pdu(configuration);
             } else {
-                PDU pdu2 = new PDU();
-                pdu2.setType(PDU.TRAP);
-                pdu = pdu2;
+                pdu = createTrapPdu();
             }
-            pdu.add(new VariableBinding(SnmpConstants.sysUpTime, sysUpTime));
-            pdu.add(new VariableBinding(SnmpConstants.snmpTrapOID, trapOIDKey));
-            pdu.add(new VariableBinding(SnmpConstants.snmpTrapAddress, new IpAddress(managerAddress)));
-            pdu.add(new VariableBinding(trapOIDKey, new OctetString(trapOIDValue)));
-
+            pdu.add(new VariableBinding(SnmpConstants.sysUpTime, new TimeTicks(configuration.getSysUptime())));
+            if (configuration.getTrapOidKey() != null && configuration.getTrapOidValue() != null) {
+                pdu.add(new VariableBinding(SnmpConstants.snmpTrapOID, new OID(configuration.getTrapOidKey())));
+                pdu.add(new VariableBinding(configuration.getTrapOidKey(), configuration.getTrapOidValue()));
+            }
+            Optional.ofNullable(configuration.getManagerAddress())
+                    .map(IpAddress::new)
+                    .map(ipAddress -> new VariableBinding(SnmpConstants.snmpTrapAddress, ipAddress))
+                    .ifPresent(pdu::add);
             return snmp.send(pdu, target);
         } catch (IOException e) {
             final String errorMessage = "Failed to send trap from SNMP agent: " + this.toString();
             LOGGER.error(errorMessage, e);
             throw new ProcessException(errorMessage, e);
         }
+    }
+
+    private PDU createTrapPdu() {
+        PDU pdu = new PDU();
+        pdu.setType(PDU.TRAP);
+        return pdu;
+    }
+
+    private PDU createV1Pdu(TrapConfiguration configuration) {
+        PDUv1 pdu = new PDUv1();
+        Optional.ofNullable(configuration.getEnterpriseOid()).map(OID::new).ifPresent(pdu::setEnterprise);
+        Optional.ofNullable(configuration.getAgentAddress()).map(IpAddress::new).ifPresent(pdu::setAgentAddress);
+        pdu.setGenericTrap(configuration.getGenericTrapType());
+        pdu.setSpecificTrap(configuration.getSpecificTrapType());
+        return pdu;
     }
 }

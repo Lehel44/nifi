@@ -16,16 +16,27 @@
  */
 package org.apache.nifi.snmp.processors;
 
+import org.apache.nifi.annotation.behavior.InputRequirement;
+import org.apache.nifi.annotation.behavior.WritesAttribute;
+import org.apache.nifi.annotation.behavior.WritesAttributes;
+import org.apache.nifi.annotation.documentation.CapabilityDescription;
+import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.annotation.lifecycle.OnStopped;
 import org.apache.nifi.components.PropertyDescriptor;
+import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.processor.Relationship;
+import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.snmp.configuration.TargetConfiguration;
 import org.apache.nifi.snmp.configuration.TargetConfigurationBuilder;
+import org.apache.nifi.snmp.configuration.TrapConfiguration;
 import org.apache.nifi.snmp.context.SNMPClientFactory;
 import org.apache.nifi.snmp.operations.SNMPTrapReceiver;
+import org.apache.nifi.snmp.utils.SNMPUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -35,8 +46,20 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+/**
+ * Receiving data from configured SNMP agent which, upon each invocation of
+ * {@link #onTrigger(ProcessContext, ProcessSession)} method, will construct a
+ * {@link FlowFile} containing in its properties the information retrieved.
+ * The output {@link FlowFile} won't have any content.
+ */
+@Tags({"snmp", "listen", "trap"})
+@InputRequirement(InputRequirement.Requirement.INPUT_FORBIDDEN)
+@CapabilityDescription("Receives information from SNMP Agent and outputs a FlowFile with information in attributes and without any content")
+@WritesAttribute(attribute = SNMPUtils.SNMP_PROP_PREFIX + "*", description = "Attributes retrieved from the SNMP response. It may include:"
+                + " snmp$errorIndex, snmp$errorStatus, snmp$errorStatusText, snmp$nonRepeaters, snmp$requestID, snmp$type, snmp$variableBindings")
 public class ListenTrapSNMP extends AbstractSNMPProcessor {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ListenTrapSNMP.class);
 
     public static final Relationship REL_SUCCESS = new Relationship.Builder()
             .name("success")
@@ -69,7 +92,7 @@ public class ListenTrapSNMP extends AbstractSNMPProcessor {
             REL_FAILURE
     )));
 
-    private SNMPTrapReceiver trapReceiver;
+    private volatile SNMPTrapReceiver trapReceiver;
 
     @OnScheduled
     @Override
@@ -90,7 +113,9 @@ public class ListenTrapSNMP extends AbstractSNMPProcessor {
         try {
             snmpClient.listen();
         } catch (IOException e) {
-            e.printStackTrace();
+            final String errorMessage = "Could not initialize SNMP client.";
+            LOGGER.error(errorMessage, e);
+            throw new ProcessException(errorMessage, e);
         }
     }
 

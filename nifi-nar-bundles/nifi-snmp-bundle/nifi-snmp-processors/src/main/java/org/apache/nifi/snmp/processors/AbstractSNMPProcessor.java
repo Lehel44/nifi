@@ -80,8 +80,8 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
             .displayName("SNMP agent hostname")
             .description("Network address of SNMP Agent (e.g., localhost)")
             .required(true)
-            .defaultValue("localhost")
-            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+            .defaultValue("127.0.0.1")
+            .addValidator(StandardValidators.NETWORK_ADDRESS_VALIDATOR)
             .build();
 
     public static final PropertyDescriptor AGENT_PORT = new PropertyDescriptor.Builder()
