@@ -16,8 +16,10 @@
  */
 package org.apache.nifi.snmp.utils;
 
+import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.logging.ComponentLog;
+import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.snmp.exception.InvalidAuthProtocolException;
 import org.apache.nifi.snmp.exception.InvalidPrivProtocolException;
@@ -49,6 +51,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Vector;
 import java.util.regex.Pattern;
 
@@ -70,6 +73,10 @@ public class SNMPUtils {
     /* List of properties name when performing simple get. */
     private static final List<String> PROPERTY_NAMES = Arrays.asList("snmp$errorIndex", "snmp$errorStatus", "snmp$errorStatusText",
             "snmp$nonRepeaters", "snmp$requestID", "snmp$type", "snmp$variableBindings");
+
+    private static final Map<String, OID> AUTH_MAP = createAuthMap();
+    private static final Map<String, OID> PRIV_MAP = createPrivMap();
+    private static final Map<String, Integer> VERSION_MAP = createVersionMap();
 
     /**
      * Updates {@link FlowFile} with attributes representing PDU properties
@@ -204,27 +211,14 @@ public class SNMPUtils {
     /**
      * Method to return the privacy protocol given the property.
      *
-     * @param privProtocolDisplayName property
+     * @param privProtocol property
      * @return protocol
      */
-    public static OID getPriv(String privProtocolDisplayName) {
-        // TODO-8325: use map
-        final PrivacyProtocol privProtocol = PrivacyProtocol.getEnumByDisplayName(privProtocolDisplayName);
-        switch (privProtocol) {
-            case DES:
-                return PrivDES.ID;
-            case DES_3:
-                return Priv3DES.ID;
-            case AES_128:
-                return PrivAES128.ID;
-            case AES_192:
-                return PrivAES192.ID;
-            case AES_256:
-                return PrivAES256.ID;
-            default:
-                throw new InvalidPrivProtocolException("Invalid privacy protocol provided.");
-        }
+    public static OID getPriv(String privProtocol) {
+        return Optional.ofNullable(PRIV_MAP.get(privProtocol))
+                .orElseThrow(() -> new InvalidPrivProtocolException("Invalid privacy protocol provided."));
     }
+
 
     /**
      * Method to return the authentication protocol given the property.
@@ -233,16 +227,8 @@ public class SNMPUtils {
      * @return protocol
      */
     public static OID getAuth(String authProtocol) {
-        //TODO-8325: use map, eliminate enum
-        final AuthenticationProtocol protocol = AuthenticationProtocol.valueOf(authProtocol);
-        switch (protocol) {
-            case SHA:
-                return AuthSHA.ID;
-            case MD5:
-                return AuthMD5.ID;
-            default:
-                throw new InvalidAuthProtocolException("Invalid authentication protocol provided.");
-        }
+        return Optional.ofNullable(AUTH_MAP.get(authProtocol))
+                .orElseThrow(() -> new InvalidAuthProtocolException("Invalid privacy protocol provided."));
     }
 
     /**
@@ -251,18 +237,9 @@ public class SNMPUtils {
      * @param snmpVersion property
      * @return protocol
      */
-    public static int getVersion(SNMPVersion snmpVersion) {
-        // TODO-8325: use map
-        switch (snmpVersion) {
-            case SNMP_V1:
-                return SnmpConstants.version1;
-            case SNMP_V2C:
-                return SnmpConstants.version2c;
-            case SNMP_V3:
-                return SnmpConstants.version3;
-            default:
-                throw new InvalidSnmpVersionException("Invalid SNMP version provided.");
-        }
+    public static int getVersion(String snmpVersion) {
+        return Optional.ofNullable(VERSION_MAP.get(snmpVersion))
+                .orElseThrow(() -> new InvalidSnmpVersionException("Invalid SNMP version provided."));
     }
 
     /**
@@ -272,7 +249,7 @@ public class SNMPUtils {
      * @param smiSyntax attribute SMI Syntax
      * @return variable
      */
-    public static Variable stringToVariable(String value, int smiSyntax, ComponentLog logger) {
+    private static Optional<Variable> stringToVariable(String value, int smiSyntax, ComponentLog logger) {
         Variable var = AbstractVariable.createFromSyntax(smiSyntax);
         try {
             if (var instanceof AssignableFromString) {
@@ -289,7 +266,7 @@ public class SNMPUtils {
             logger.error("Unsupported conversion of [ {} ] to ", var.getSyntaxString(), e);
             var = null;
         }
-        return var;
+        return Optional.ofNullable(var);
     }
 
     /**
@@ -309,15 +286,15 @@ public class SNMPUtils {
                 String snmpPropName = splits[1];
                 String snmpPropValue = attributeEntry.getValue();
                 if (SNMPUtils.OID_PATTERN.matcher(snmpPropName).matches()) {
-                    Variable var;
+                    Optional<Variable> var;
                     if (splits.length == 2) { // no SMI syntax defined
-                        var = new OctetString(snmpPropValue);
+                        var = Optional.of(new OctetString(snmpPropValue));
                     } else {
                         int smiSyntax = Integer.parseInt(splits[2]);
                         var = SNMPUtils.stringToVariable(snmpPropValue, smiSyntax, logger);
                     }
-                    if (var != null) {
-                        VariableBinding varBind = new VariableBinding(new OID(snmpPropName), var);
+                    if (var.isPresent()) {
+                        VariableBinding varBind = new VariableBinding(new OID(snmpPropName), var.get());
                         pdu.add(varBind);
                         result = true;
                     }
@@ -325,6 +302,39 @@ public class SNMPUtils {
             }
         }
         return result;
+    }
+
+    public static FlowFile createFlowFile(ProcessContext context, ProcessSession processSession, PDU pdu, PropertyDescriptor textualOid) {
+        FlowFile flowFile = processSession.create();
+        flowFile = SNMPUtils.updateFlowFileAttributesWithPduProperties(pdu, flowFile, processSession);
+        flowFile = SNMPUtils.addAttribute(SNMPUtils.SNMP_PROP_PREFIX + "textualOid", context.getProperty(textualOid).getValue(),
+                flowFile, processSession);
+        return flowFile;
+    }
+
+    private static Map<String, OID> createPrivMap() {
+        Map<String, OID> map = new HashMap<>();
+        map.put("DES", PrivDES.ID);
+        map.put("3DES", Priv3DES.ID);
+        map.put("AES128", PrivAES128.ID);
+        map.put("AES192", PrivAES192.ID);
+        map.put("AES256", PrivAES256.ID);
+        return map;
+    }
+
+    private static Map<String, OID> createAuthMap() {
+        Map<String, OID> map = new HashMap<>();
+        map.put("SHA", AuthSHA.ID);
+        map.put("MD5", AuthMD5.ID);
+        return map;
+    }
+
+    private static Map<String, Integer> createVersionMap() {
+        Map<String, Integer> map = new HashMap<>();
+        map.put("SNMPv1", SnmpConstants.version1);
+        map.put("SNMPv2c", SnmpConstants.version2c);
+        map.put("SNMPv3", SnmpConstants.version3);
+        return map;
     }
 
     private SNMPUtils() {

@@ -16,14 +16,12 @@
  */
 package org.apache.nifi.snmp.configuration;
 
-import org.apache.nifi.snmp.utils.SNMPVersion;
-
 public class TargetConfigurationBuilder {
     private String agentHost;
     private String agentPort;
     private int retries;
     private int timeout;
-    private SNMPVersion version;
+    private int version;
     private String authProtocol;
     private String authPassword;
     private String privacyProtocol;
@@ -52,7 +50,7 @@ public class TargetConfigurationBuilder {
         return this;
     }
 
-    public TargetConfigurationBuilder setVersion(SNMPVersion version) {
+    public TargetConfigurationBuilder setVersion(int version) {
         this.version = version;
         return this;
     }
@@ -98,7 +96,7 @@ public class TargetConfigurationBuilder {
     }
 
     private void validate() {
-        boolean isValid = agentHost != null && agentPort != null && version != null && securityLevel != null;
+        boolean isValid = agentHost != null && agentPort != null && securityLevel != null;
         if (!isValid) {
             throw new IllegalStateException("Required properties are not set.");
         }

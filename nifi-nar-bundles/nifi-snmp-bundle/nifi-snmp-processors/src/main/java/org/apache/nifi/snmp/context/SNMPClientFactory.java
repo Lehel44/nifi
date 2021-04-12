@@ -42,7 +42,7 @@ public final class SNMPClientFactory {
     private static final String DEFAULT_PORT = "0";
 
     public static Snmp createSnmpClient(TargetConfiguration configuration, String clientPort) {
-        final int snmpVersion = SNMPUtils.getVersion(configuration.getVersion());
+        final int snmpVersion = configuration.getVersion();
         if (SnmpConstants.version3 == snmpVersion) {
             return createSnmpV3Client(configuration, clientPort);
         } else {
@@ -50,13 +50,13 @@ public final class SNMPClientFactory {
         }
     }
 
-    private static Snmp createSimpleSnmpClient(String clientPort) {
-        Snmp snmp;
+    private static Snmp createSimpleSnmpClient(final String clientPort) {
+        final Snmp snmp;
         try {
-            String port = clientPort == null ? DEFAULT_PORT : clientPort;
+            final String port = clientPort == null ? DEFAULT_PORT : clientPort;
             snmp = new Snmp(new DefaultUdpTransportMapping(new UdpAddress(DEFAULT_HOST + "/" + port)));
         } catch (IOException e) {
-            String errorMessage = "Creating SNMP client failed.";
+            final String errorMessage = "Creating SNMP client failed.";
             LOGGER.error(errorMessage, e);
             throw new CreateSNMPClientException(errorMessage);
         }

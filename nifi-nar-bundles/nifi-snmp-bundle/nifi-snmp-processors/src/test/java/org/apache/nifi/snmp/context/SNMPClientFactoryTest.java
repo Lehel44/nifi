@@ -19,7 +19,6 @@ package org.apache.nifi.snmp.context;
 import org.apache.nifi.remote.io.socket.NetworkUtils;
 import org.apache.nifi.snmp.configuration.TargetConfiguration;
 import org.apache.nifi.snmp.configuration.TargetConfigurationBuilder;
-import org.apache.nifi.snmp.utils.SNMPVersion;
 import org.junit.Test;
 import org.mockito.internal.util.collections.Iterables;
 import org.snmp4j.Snmp;

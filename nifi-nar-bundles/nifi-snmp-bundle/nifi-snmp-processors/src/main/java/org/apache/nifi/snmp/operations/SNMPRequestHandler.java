@@ -1,6 +1,7 @@
 package org.apache.nifi.snmp.operations;
 
 import org.snmp4j.PDU;
+import org.snmp4j.Target;
 import org.snmp4j.event.ResponseEvent;
 import org.snmp4j.smi.OID;
 import org.snmp4j.util.TreeEvent;
@@ -17,4 +18,6 @@ public interface SNMPRequestHandler {
     ResponseEvent set(PDU pdu) throws IOException;
 
     void close();
+
+    Target getTarget();
 }

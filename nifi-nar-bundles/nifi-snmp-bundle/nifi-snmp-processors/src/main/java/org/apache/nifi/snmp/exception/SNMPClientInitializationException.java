@@ -16,7 +16,7 @@
  */
 package org.apache.nifi.snmp.exception;
 
-public class SNMPClientInitializationException extends RuntimeException {
+public class SNMPClientInitializationException extends SNMPException {
 
     public SNMPClientInitializationException(String errorMessage) {
         super(errorMessage);

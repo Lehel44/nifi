@@ -31,7 +31,6 @@ import org.apache.nifi.processor.Processor;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
-import org.apache.nifi.snmp.utils.SNMPStrategy;
 import org.apache.nifi.snmp.utils.SNMPUtils;
 import org.apache.nifi.snmp.validators.OIDValidator;
 import org.snmp4j.PDU;
@@ -68,7 +67,7 @@ public class GetSNMP extends AbstractSNMPProcessor {
             .displayName("OID")
             .description("The OID to request")
             .required(true)
-            .addValidator(OIDValidator.SNMP_OID_VALIDATOR)
+            .addValidator(new OIDValidator())
             .build();
 
     // Textual OID to request.
@@ -134,6 +133,11 @@ public class GetSNMP extends AbstractSNMPProcessor {
         super.initSnmpClient(context);
     }
 
+    @Override
+    protected String getClientPort() {
+        return DEFAULT_PORT;
+    }
+
     /**
      * Delegate method to supplement
      * {@link #onTrigger(ProcessContext, ProcessSession)}. It is implemented by
@@ -145,11 +149,10 @@ public class GetSNMP extends AbstractSNMPProcessor {
      */
     @Override
     public void onTrigger(ProcessContext context, ProcessSession processSession) {
-        final String targetUri = standardSnmpRequestHandler.getTarget().getAddress().toString();
+        final String targetUri = snmpRequestHandler.getTarget().getAddress().toString();
         final SNMPStrategy snmpStrategy = SNMPStrategy.valueOf(context.getProperty(SNMP_STRATEGY).getValue());
         final String oid = context.getProperty(OID).getValue();
 
-        // TODO-8325: check strategy class here
         if (SNMPStrategy.GET == snmpStrategy) {
             performSnmpGet(context, processSession, targetUri, oid);
         } else if (SNMPStrategy.WALK == snmpStrategy) {
@@ -158,7 +161,7 @@ public class GetSNMP extends AbstractSNMPProcessor {
     }
 
     private void performSnmpWalk(ProcessContext context, ProcessSession processSession, String targetUri, String oid) {
-        final List<TreeEvent> events = standardSnmpRequestHandler.walk(new OID(oid));
+        final List<TreeEvent> events = snmpRequestHandler.walk(new OID(oid));
         if (areValidEvents(events)) {
             FlowFile flowFile = processSession.create();
             for (TreeEvent treeEvent : events) {
@@ -173,10 +176,10 @@ public class GetSNMP extends AbstractSNMPProcessor {
     }
 
     private void performSnmpGet(ProcessContext context, ProcessSession processSession, String targetUri, String oid) {
-        final ResponseEvent response = standardSnmpRequestHandler.get(new OID(oid));
+        final ResponseEvent response = snmpRequestHandler.get(new OID(oid));
         if (response.getResponse() != null) {
             PDU pdu = response.getResponse();
-            FlowFile flowFile = createFlowFile(context, processSession, pdu);
+            FlowFile flowFile = SNMPUtils.createFlowFile(context, processSession, pdu, TEXTUAL_OID);
             processSession.getProvenanceReporter().receive(flowFile, targetUri + "/" + oid);
             if (pdu.getErrorStatus() == PDU.noError) {
                 processSession.transfer(flowFile, REL_SUCCESS);
@@ -199,15 +202,11 @@ public class GetSNMP extends AbstractSNMPProcessor {
         return RELATIONSHIPS;
     }
 
-    private FlowFile createFlowFile(ProcessContext context, ProcessSession processSession, PDU pdu) {
-        FlowFile flowFile = processSession.create();
-        flowFile = SNMPUtils.updateFlowFileAttributesWithPduProperties(pdu, flowFile, processSession);
-        flowFile = SNMPUtils.addAttribute(SNMPUtils.SNMP_PROP_PREFIX + "textualOid", context.getProperty(TEXTUAL_OID).getValue(),
-                flowFile, processSession);
-        return flowFile;
-    }
-
     private boolean areValidEvents(List<TreeEvent> events) {
         return (events != null) && !events.isEmpty() && (events.get(0).getVariableBindings() != null);
+    }
+
+    private enum SNMPStrategy {
+        GET, WALK
     }
 }

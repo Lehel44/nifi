@@ -16,7 +16,7 @@
  */
 package org.apache.nifi.snmp.exception;
 
-public class CloseSNMPClientException extends RuntimeException {
+public class CloseSNMPClientException extends SNMPException {
 
     public CloseSNMPClientException(String errorMessage) {
         super(errorMessage);

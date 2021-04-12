@@ -16,7 +16,7 @@
  */
 package org.apache.nifi.snmp.exception;
 
-public class CreateSNMPClientException extends RuntimeException {
+public class CreateSNMPClientException extends SNMPException {
 
     public CreateSNMPClientException(String errorMessage) {
         super(errorMessage);

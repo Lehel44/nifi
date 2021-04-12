@@ -16,15 +16,13 @@
  */
 package org.apache.nifi.snmp.configuration;
 
-import org.apache.nifi.snmp.utils.SNMPVersion;
-
 public class TargetConfiguration {
 
     private final String agentHost;
     private final String agentPort;
     private final int retries;
     private final int timeout;
-    private final SNMPVersion version;
+    private final int version;
     private final String authProtocol;
     private final String authPassword;
     private final String privacyProtocol;
@@ -37,7 +35,7 @@ public class TargetConfiguration {
                         final String agentPort,
                         final int retries,
                         final int timeout,
-                        final SNMPVersion version,
+                        final int version,
                         final String authProtocol,
                         final String authPassword,
                         final String privacyProtocol,
@@ -75,7 +73,7 @@ public class TargetConfiguration {
         return timeout;
     }
 
-    public SNMPVersion getVersion() {
+    public int getVersion() {
         return version;
     }
 

@@ -16,7 +16,7 @@
  */
 package org.apache.nifi.snmp.exception;
 
-public class InvalidPrivProtocolException extends RuntimeException {
+public class InvalidPrivProtocolException extends SNMPException {
 
     public InvalidPrivProtocolException(String errorMessage) {
         super(errorMessage);

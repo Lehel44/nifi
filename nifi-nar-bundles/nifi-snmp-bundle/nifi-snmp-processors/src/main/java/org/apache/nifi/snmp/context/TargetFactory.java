@@ -17,9 +17,8 @@
 package org.apache.nifi.snmp.context;
 
 import org.apache.nifi.snmp.configuration.TargetConfiguration;
-import org.apache.nifi.snmp.utils.SNMPUtils;
-import org.snmp4j.AbstractTarget;
 import org.snmp4j.CommunityTarget;
+import org.snmp4j.Target;
 import org.snmp4j.UserTarget;
 import org.snmp4j.mp.SnmpConstants;
 import org.snmp4j.security.SecurityLevel;
@@ -30,8 +29,8 @@ import java.util.Optional;
 
 public final class TargetFactory {
 
-    public static AbstractTarget createTarget(TargetConfiguration configuration) {
-        final int snmpVersion = SNMPUtils.getVersion(configuration.getVersion());
+    public static Target createTarget(TargetConfiguration configuration) {
+        final int snmpVersion = configuration.getVersion();
         if (SnmpConstants.version3 == snmpVersion) {
             return createUserTarget(configuration);
         } else {
@@ -39,7 +38,7 @@ public final class TargetFactory {
         }
     }
 
-    private static UserTarget createUserTarget(TargetConfiguration configuration) {
+    private static Target createUserTarget(TargetConfiguration configuration) {
         UserTarget userTarget = new UserTarget();
         setupTargetBasicProperties(userTarget, configuration);
 
@@ -52,8 +51,8 @@ public final class TargetFactory {
         return userTarget;
     }
 
-    private static CommunityTarget createCommunityTarget(TargetConfiguration configuration) {
-        CommunityTarget communityTarget = new CommunityTarget();
+    private static Target createCommunityTarget(TargetConfiguration configuration) {
+        Target communityTarget = new CommunityTarget();
         setupTargetBasicProperties(communityTarget, configuration);
         String community = configuration.getCommunityString();
 
@@ -62,11 +61,10 @@ public final class TargetFactory {
         return communityTarget;
     }
 
-    private static void setupTargetBasicProperties(AbstractTarget target, TargetConfiguration configuration) {
-        final int snmpVersion = SNMPUtils.getVersion(configuration.getVersion());
+    private static void setupTargetBasicProperties(Target target, TargetConfiguration configuration) {
+        final int snmpVersion = configuration.getVersion();
         final String host = configuration.getAgentHost();
         final String port = configuration.getAgentPort();
-        // TODO: Why are these here and in the client too?
         final int retries = configuration.getRetries();
         final int timeout = configuration.getTimeout();
 

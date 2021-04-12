@@ -16,7 +16,7 @@
  */
 package org.apache.nifi.snmp.exception;
 
-public class InvalidAuthProtocolException extends RuntimeException {
+public class InvalidAuthProtocolException extends SNMPException {
 
     public InvalidAuthProtocolException(String errorMessage) {
         super(errorMessage);

@@ -31,6 +31,8 @@ import org.snmp4j.PDU;
 import org.snmp4j.ScopedPDU;
 import org.snmp4j.event.ResponseEvent;
 import org.snmp4j.mp.SnmpConstants;
+import org.snmp4j.util.DefaultPDUFactory;
+import org.snmp4j.util.PDUFactory;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -51,6 +53,8 @@ import java.util.Set;
         " When founding attributes with name like snmp$<OID>, the processor will atempt to set the value of" +
         " attribute to the corresponding OID given in the attribute name")
 public class SetSNMP extends AbstractSNMPProcessor {
+
+    private static PDUFactory pduFactory = new DefaultPDUFactory();
 
     public static final Relationship REL_SUCCESS = new Relationship.Builder()
             .name("success")
@@ -88,12 +92,16 @@ public class SetSNMP extends AbstractSNMPProcessor {
         super.initSnmpClient(context);
     }
 
+    @Override
+    protected String getClientPort() {
+        return DEFAULT_PORT;
+    }
 
     @Override
     public void onTrigger(ProcessContext context, ProcessSession processSession) {
         FlowFile flowFile = processSession.get();
         if (flowFile != null) {
-            PDU pdu = createPdu();
+            PDU pdu = pduFactory.createPDU(snmpRequestHandler.getTarget());
             if (SNMPUtils.addVariables(pdu, flowFile.getAttributes(), getLogger())) {
                 pdu.setType(PDU.SET);
                 processPdu(context, processSession, flowFile, pdu);
@@ -106,7 +114,7 @@ public class SetSNMP extends AbstractSNMPProcessor {
 
     private void processPdu(ProcessContext context, ProcessSession processSession, FlowFile flowFile, PDU pdu) {
         try {
-            ResponseEvent response = standardSnmpRequestHandler.set(pdu);
+            ResponseEvent response = snmpRequestHandler.set(pdu);
             if (response.getResponse() == null) {
                 processSession.transfer(processSession.penalize(flowFile), REL_FAILURE);
                 getLogger().error("Set request timed out or parameters are incorrect.");
@@ -114,25 +122,17 @@ public class SetSNMP extends AbstractSNMPProcessor {
             } else if (response.getResponse().getErrorStatus() == PDU.noError) {
                 flowFile = SNMPUtils.updateFlowFileAttributesWithPduProperties(pdu, flowFile, processSession);
                 processSession.transfer(flowFile, REL_SUCCESS);
-                processSession.getProvenanceReporter().send(flowFile, standardSnmpRequestHandler.getTarget().getAddress().toString());
+                processSession.getProvenanceReporter().send(flowFile, snmpRequestHandler.getTarget().getAddress().toString());
             } else {
                 final String error = response.getResponse().getErrorStatusText();
                 flowFile = SNMPUtils.addAttribute(SNMPUtils.SNMP_PROP_PREFIX + "error", error, flowFile, processSession);
                 processSession.transfer(processSession.penalize(flowFile), REL_FAILURE);
-                getLogger().error("Failed while executing SNMP Set [{}] via {}. Error = {}", response.getRequest().getVariableBindings(), standardSnmpRequestHandler, error);
+                getLogger().error("Failed while executing SNMP Set [{}] via {}. Error = {}", response.getRequest().getVariableBindings(), snmpRequestHandler, error);
             }
         } catch (IOException e) {
             processSession.transfer(processSession.penalize(flowFile), REL_FAILURE);
-            getLogger().error("Failed while executing SNMP Set via " + standardSnmpRequestHandler, e);
+            getLogger().error("Failed while executing SNMP Set via " + snmpRequestHandler, e);
             context.yield();
-        }
-    }
-
-    private PDU createPdu() {
-        if (standardSnmpRequestHandler.getTarget().getVersion() == SnmpConstants.version3) {
-            return new ScopedPDU();
-        } else {
-            return new PDU();
         }
     }
 

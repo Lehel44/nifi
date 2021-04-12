@@ -17,6 +17,7 @@
 package org.apache.nifi.snmp.processors;
 
 import org.apache.nifi.annotation.lifecycle.OnStopped;
+import org.apache.nifi.components.AllowableValue;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.components.ValidationContext;
 import org.apache.nifi.components.ValidationResult;
@@ -26,9 +27,9 @@ import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.snmp.configuration.TargetConfiguration;
 import org.apache.nifi.snmp.configuration.TargetConfigurationBuilder;
 import org.apache.nifi.snmp.logging.SLF4JLogFactory;
-import org.apache.nifi.snmp.operations.StandardSNMPRequestHandler;
-import org.apache.nifi.snmp.utils.SNMPVersion;
-import org.apache.nifi.snmp.validators.SNMPValidator;
+import org.apache.nifi.snmp.operations.SNMPRequestHandler;
+import org.apache.nifi.snmp.operations.SNMPRequestHandlerFactory;
+import org.apache.nifi.snmp.utils.SNMPUtils;
 import org.snmp4j.log.LogFactory;
 
 import java.util.ArrayList;
@@ -41,17 +42,35 @@ import java.util.List;
  */
 abstract class AbstractSNMPProcessor extends AbstractProcessor {
 
+    protected static final String DEFAULT_PORT = "0";
+
     static {
         LogFactory.setLogFactory(new SLF4JLogFactory());
     }
 
-    // TODO-8325: Rename these back to original. Check why CLIENT PORT needed.
-    // Shouldnt be required, rename it
+    private static final AllowableValue SNMP_V1 = new AllowableValue("SNMPv1", "v1",
+            "SNMP version 1");
+
+    private static final AllowableValue SNMP_V2C = new AllowableValue("SNMPv2c", "v2c",
+            "SNMP version 2c");
+
+    private static final AllowableValue SNMP_V3 = new AllowableValue("SNMPv3", "v3",
+            "SNMP version 3 with improved security");
+
+    private static final AllowableValue NO_AUTH_NO_PRIV = new AllowableValue("noAuthNoPriv", "No authentication or encryption",
+            "No authentication or encryption");
+
+    private static final AllowableValue AUTH_NO_PRIV = new AllowableValue("authNoPriv", "Authentication without encryption",
+            "Authentication without encryption");
+
+    private static final AllowableValue AUTH_PRIV = new AllowableValue("authPriv", "Authentication and encryption",
+            "Authentication and encryption");
+
     public static final PropertyDescriptor SNMP_CLIENT_PORT = new PropertyDescriptor.Builder()
             .name("snmp-client-port")
             .displayName("SNMP client port")
             .description("The processor runs an SNMP client on localhost. The port however can be specified")
-            .required(true)
+            .required(false)
             .defaultValue("0")
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
@@ -79,7 +98,7 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
             .displayName("SNMP Version")
             .description("SNMP Version to use")
             .required(true)
-            .allowableValues("SNMPv1", "SNMPv2c", "SNMPv3")
+            .allowableValues(SNMP_V1, SNMP_V2C, SNMP_V3)
             .defaultValue("SNMPv1")
             .build();
 
@@ -87,10 +106,10 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
             .name("snmp-community")
             .displayName("SNMP Community (v1 & v2c)")
             .description("SNMP Community to use (e.g., public) for authentication")
-            .required(false)
+            .required(true)
             .defaultValue("public")
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-            .dependsOn(SNMP_VERSION, "SNMPv1", "SNMPv2c")
+            .dependsOn(SNMP_VERSION, SNMP_V1, SNMP_V2C)
             .build();
 
     public static final PropertyDescriptor SNMP_SECURITY_LEVEL = new PropertyDescriptor.Builder()
@@ -98,7 +117,7 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
             .displayName("SNMP Security Level")
             .description("SNMP Security Level to use")
             .required(true)
-            .allowableValues("noAuthNoPriv", "authNoPriv", "authPriv")
+            .allowableValues(NO_AUTH_NO_PRIV, AUTH_NO_PRIV, AUTH_PRIV)
             .defaultValue("authPriv")
             .build();
 
@@ -106,8 +125,9 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
             .name("snmp-security-name")
             .displayName("SNMP Security name / user name")
             .description("Security name used for SNMP exchanges")
-            .required(false)
+            .required(true)
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+            .dependsOn(SNMP_VERSION, SNMP_V3)
             .build();
 
     public static final PropertyDescriptor SNMP_AUTH_PROTOCOL = new PropertyDescriptor.Builder()
@@ -117,6 +137,7 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
             .required(false)
             .allowableValues("MD5", "SHA", "")
             .defaultValue("")
+            .dependsOn(SNMP_SECURITY_LEVEL, AUTH_NO_PRIV, AUTH_PRIV)
             .build();
 
     public static final PropertyDescriptor SNMP_AUTH_PASSWORD = new PropertyDescriptor.Builder()
@@ -126,24 +147,28 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
             .required(false)
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .sensitive(true)
+            .dependsOn(SNMP_SECURITY_LEVEL, AUTH_NO_PRIV, AUTH_PRIV)
             .build();
 
     public static final PropertyDescriptor SNMP_PRIVACY_PROTOCOL = new PropertyDescriptor.Builder()
             .name("snmp-private-protocol")
             .displayName("SNMP Privacy Protocol")
             .description("SNMP Privacy Protocol to use")
-            .required(false)
+            // TODO check all
+            .required(true)
             .allowableValues("DES", "3DES", "AES128", "AES192", "AES256", "")
             .defaultValue("")
+            .dependsOn(SNMP_SECURITY_LEVEL, AUTH_PRIV)
             .build();
 
     public static final PropertyDescriptor SNMP_PRIVACY_PASSWORD = new PropertyDescriptor.Builder()
             .name("snmp-private-protocol-passphrase")
             .displayName("SNMP Privacy protocol pass phrase")
             .description("Pass phrase used for SNMP privacy protocol")
-            .required(false)
+            .required(true)
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .sensitive(true)
+            .dependsOn(SNMP_SECURITY_LEVEL, AUTH_PRIV)
             .build();
 
     public static final PropertyDescriptor SNMP_RETRIES = new PropertyDescriptor.Builder()
@@ -164,13 +189,11 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
             .addValidator(StandardValidators.INTEGER_VALIDATOR)
             .build();
 
-    protected volatile StandardSNMPRequestHandler standardSnmpRequestHandler;
+    protected volatile SNMPRequestHandler snmpRequestHandler;
 
     public void initSnmpClient(ProcessContext context) {
         // TODO: abstract method override in trap, separate descrption for processors, two diff property
-        final String clientPort = context.getProperty(SNMP_CLIENT_PORT).getValue();
-
-        SNMPVersion version = SNMPVersion.getEnumByDisplayName(context.getProperty(SNMP_VERSION).getValue());
+        final int version = SNMPUtils.getVersion(context.getProperty(SNMP_VERSION).getValue());
 
         final TargetConfiguration configuration = new TargetConfigurationBuilder()
                 .setAgentHost(context.getProperty(AGENT_HOST).getValue())
@@ -187,46 +210,18 @@ abstract class AbstractSNMPProcessor extends AbstractProcessor {
                 .setCommunityString(context.getProperty(SNMP_COMMUNITY).getValue())
                 .build();
 
-        standardSnmpRequestHandler = new StandardSNMPRequestHandler(configuration, clientPort);
+        snmpRequestHandler = SNMPRequestHandlerFactory.createStandardRequestHandler(configuration, getClientPort());
     }
+
+    protected abstract String getClientPort();
 
     /**
      * Closes the current SNMP mapping.
      */
     @OnStopped
     public void close() {
-        if (standardSnmpRequestHandler != null) {
-            standardSnmpRequestHandler.close();
+        if (snmpRequestHandler != null) {
+            snmpRequestHandler.close();
         }
     }
-
-    /**
-     * @see org.apache.nifi.components.AbstractConfigurableComponent#customValidate(org.apache.nifi.components.ValidationContext)
-     */
-    @Override
-    protected Collection<ValidationResult> customValidate(ValidationContext validationContext) {
-        final List<ValidationResult> problems = new ArrayList<>(super.customValidate(validationContext));
-
-        SNMPVersion version = SNMPVersion.getEnumByDisplayName(validationContext.getProperty(SNMP_VERSION).getValue());
-
-        final TargetConfiguration targetConfiguration = new TargetConfigurationBuilder()
-                .setAgentHost(validationContext.getProperty(AGENT_HOST).getValue())
-                .setAgentPort(validationContext.getProperty(AGENT_PORT).toString())
-                .setRetries(validationContext.getProperty(SNMP_RETRIES).asInteger())
-                .setTimeout(validationContext.getProperty(SNMP_TIMEOUT).asInteger())
-                .setVersion(version)
-                .setAuthProtocol(validationContext.getProperty(SNMP_AUTH_PROTOCOL).getValue())
-                .setAuthPassword(validationContext.getProperty(SNMP_AUTH_PASSWORD).getValue())
-                .setPrivacyProtocol(validationContext.getProperty(SNMP_PRIVACY_PROTOCOL).getValue())
-                .setPrivacyPassword(validationContext.getProperty(SNMP_PRIVACY_PASSWORD).getValue())
-                .setSecurityName(validationContext.getProperty(SNMP_SECURITY_NAME).getValue())
-                .setSecurityLevel(validationContext.getProperty(SNMP_SECURITY_LEVEL).getValue())
-                .setCommunityString(validationContext.getProperty(SNMP_COMMUNITY).getValue())
-                .build();
-
-        SNMPValidator snmpValidator = new SNMPValidator(targetConfiguration, problems);
-        return snmpValidator.validate();
-    }
-
-
 }

@@ -16,16 +16,18 @@
  */
 package org.apache.nifi.snmp.validators;
 
+import org.apache.nifi.components.ValidationContext;
 import org.apache.nifi.components.ValidationResult;
 import org.apache.nifi.components.Validator;
 
 import java.util.regex.Pattern;
 
-public class OIDValidator {
+public class OIDValidator implements Validator {
 
     public static final Pattern OID_PATTERN = Pattern.compile("[0-9+.]*");
 
-    public static final Validator SNMP_OID_VALIDATOR = (subject, input, context) -> {
+    @Override
+    public ValidationResult validate(String subject, String input, ValidationContext context) {
         final ValidationResult.Builder builder = new ValidationResult.Builder();
         builder.subject(subject).input(input);
         if (context.isExpressionLanguageSupported(subject) && context.isExpressionLanguagePresent(input)) {
@@ -41,6 +43,5 @@ public class OIDValidator {
             builder.valid(false).explanation(e.getMessage());
         }
         return builder.build();
-    };
-
+    }
 }
