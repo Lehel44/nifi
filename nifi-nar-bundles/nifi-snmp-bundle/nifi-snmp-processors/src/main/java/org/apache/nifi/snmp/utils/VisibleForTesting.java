@@ -14,12 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.nifi.snmp.exception;
+package org.apache.nifi.snmp.utils;
 
-public class InvalidPrivProtocolException extends SNMPException {
-
-    public InvalidPrivProtocolException(final String errorMessage) {
-        super(errorMessage);
-    }
-
+public @interface VisibleForTesting {
 }

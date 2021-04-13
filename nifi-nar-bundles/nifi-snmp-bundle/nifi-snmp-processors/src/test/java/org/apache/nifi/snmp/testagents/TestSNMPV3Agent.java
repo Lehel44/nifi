@@ -42,7 +42,7 @@ public class TestSNMPV3Agent extends TestAgent {
     }
 
     @Override
-    protected void addUsmUser(USM usm) {
+    protected void addUsmUser(final USM usm) {
         UsmUser user = new UsmUser(new OctetString("SHA"),
                 AuthSHA.ID,
                 new OctetString("SHAAuthPassword"),
@@ -70,7 +70,7 @@ public class TestSNMPV3Agent extends TestAgent {
     }
 
     @Override
-    protected void addViews(VacmMIB vacmMIB) {
+    protected void addViews(final VacmMIB vacmMIB) {
         vacmMIB.addGroup(SecurityModel.SECURITY_MODEL_USM,
                 new OctetString("SHA"),
                 new OctetString("v3-auth-no-priv-group"),

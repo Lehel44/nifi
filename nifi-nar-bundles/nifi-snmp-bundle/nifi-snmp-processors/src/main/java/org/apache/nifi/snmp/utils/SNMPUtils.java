@@ -86,16 +86,16 @@ public class SNMPUtils {
      * @param processSession instance of {@link ProcessSession}
      * @return updated {@link FlowFile}
      */
-    public static FlowFile updateFlowFileAttributesWithPduProperties(PDU response, FlowFile flowFile, ProcessSession processSession) {
+    public static FlowFile updateFlowFileAttributesWithPduProperties(final PDU response, FlowFile flowFile, final ProcessSession processSession) {
         if (response != null) {
             try {
                 Method[] methods = PDU.class.getDeclaredMethods();
                 Map<String, String> attributes = new HashMap<>();
                 for (Method method : methods) {
                     if (Modifier.isPublic(method.getModifiers()) && (method.getParameterTypes().length == 0) && method.getName().startsWith("get")) {
-                        String propertyName = extractPropertyNameFromMethod(method);
+                        final String propertyName = extractPropertyNameFromMethod(method);
                         if (isValidSnmpPropertyName(propertyName)) {
-                            Object amqpPropertyValue = method.invoke(response);
+                            final Object amqpPropertyValue = method.invoke(response);
                             if (amqpPropertyValue != null) {
                                 if (propertyName.equals(SNMP_PROP_PREFIX + "variableBindings") && (amqpPropertyValue instanceof Vector)) {
                                     addGetOidValues(attributes, amqpPropertyValue);
@@ -123,8 +123,8 @@ public class SNMPUtils {
      * @param processSession session
      * @return updated flow file
      */
-    public static FlowFile addAttribute(String key, String value, FlowFile flowFile, ProcessSession processSession) {
-        Map<String, String> attributes = new HashMap<>();
+    public static FlowFile addAttribute(final String key, final String value, FlowFile flowFile, final ProcessSession processSession) {
+        final Map<String, String> attributes = new HashMap<>();
         attributes.put(key, value);
         flowFile = processSession.putAllAttributes(flowFile, attributes);
         return flowFile;
@@ -138,8 +138,8 @@ public class SNMPUtils {
      * @param processSession instance of {@link ProcessSession}
      * @return updated {@link FlowFile}
      */
-    public static FlowFile updateFlowFileAttributesWithTreeEventProperties(TreeEvent treeEvent, FlowFile flowFile, ProcessSession processSession) {
-        Map<String, String> attributes = new HashMap<>();
+    public static FlowFile updateFlowFileAttributesWithTreeEventProperties(final TreeEvent treeEvent, FlowFile flowFile, final ProcessSession processSession) {
+        final Map<String, String> attributes = new HashMap<>();
         addWalkOidValues(attributes, treeEvent.getVariableBindings());
         flowFile = processSession.putAllAttributes(flowFile, attributes);
         return flowFile;
@@ -151,9 +151,9 @@ public class SNMPUtils {
      * @param attributes attributes
      * @param vector     vector of {@link VariableBinding}
      */
-    private static void addWalkOidValues(Map<String, String> attributes, Object vector) {
+    private static void addWalkOidValues(final Map<String, String> attributes, final Object vector) {
         if (vector instanceof VariableBinding[]) {
-            VariableBinding[] variables = (VariableBinding[]) vector;
+            final VariableBinding[] variables = (VariableBinding[]) vector;
             for (VariableBinding variableBinding : variables) {
                 addAttributeFromVariable(variableBinding, attributes);
             }
@@ -166,10 +166,9 @@ public class SNMPUtils {
      * @param attributes attributes
      * @param vector     vector of {@link VariableBinding}
      */
-    private static void addGetOidValues(Map<String, String> attributes, Object vector) {
+    private static void addGetOidValues(final Map<String, String> attributes, final Object vector) {
         if (vector instanceof Vector) {
-            @SuppressWarnings("unchecked")
-            Vector<VariableBinding> variables = (Vector<VariableBinding>) vector;
+            @SuppressWarnings("unchecked") final Vector<VariableBinding> variables = (Vector<VariableBinding>) vector;
             for (VariableBinding variableBinding : variables) {
                 addAttributeFromVariable(variableBinding, attributes);
             }
@@ -182,7 +181,7 @@ public class SNMPUtils {
      * @param variableBinding {@link VariableBinding}
      * @param attributes      {@link FlowFile} attributes to update
      */
-    private static void addAttributeFromVariable(VariableBinding variableBinding, Map<String, String> attributes) {
+    private static void addAttributeFromVariable(final VariableBinding variableBinding, final Map<String, String> attributes) {
         attributes.put(SNMP_PROP_PREFIX + variableBinding.getOid() + SNMP_PROP_DELIMITER + variableBinding.getVariable().getSyntax(), variableBinding.getVariable().toString());
     }
 
@@ -192,7 +191,7 @@ public class SNMPUtils {
      * @param name the name of the property
      * @return 'true' if valid otherwise 'false'
      */
-    public static boolean isValidSnmpPropertyName(String name) {
+    public static boolean isValidSnmpPropertyName(final String name) {
         return PROPERTY_NAMES.contains(name);
     }
 
@@ -202,7 +201,7 @@ public class SNMPUtils {
      * @param method method
      * @return property name
      */
-    private static String extractPropertyNameFromMethod(Method method) {
+    private static String extractPropertyNameFromMethod(final Method method) {
         char[] c = method.getName().substring(3).toCharArray();
         c[0] = Character.toLowerCase(c[0]);
         return SNMP_PROP_PREFIX + new String(c);
@@ -214,7 +213,7 @@ public class SNMPUtils {
      * @param privProtocol property
      * @return protocol
      */
-    public static OID getPriv(String privProtocol) {
+    public static OID getPriv(final String privProtocol) {
         return Optional.ofNullable(PRIV_MAP.get(privProtocol))
                 .orElseThrow(() -> new InvalidPrivProtocolException("Invalid privacy protocol provided."));
     }
@@ -226,7 +225,7 @@ public class SNMPUtils {
      * @param authProtocol property
      * @return protocol
      */
-    public static OID getAuth(String authProtocol) {
+    public static OID getAuth(final String authProtocol) {
         return Optional.ofNullable(AUTH_MAP.get(authProtocol))
                 .orElseThrow(() -> new InvalidAuthProtocolException("Invalid privacy protocol provided."));
     }
@@ -237,7 +236,7 @@ public class SNMPUtils {
      * @param snmpVersion property
      * @return protocol
      */
-    public static int getVersion(String snmpVersion) {
+    public static int getVersion(final String snmpVersion) {
         return Optional.ofNullable(VERSION_MAP.get(snmpVersion))
                 .orElseThrow(() -> new InvalidSnmpVersionException("Invalid SNMP version provided."));
     }
@@ -249,7 +248,7 @@ public class SNMPUtils {
      * @param smiSyntax attribute SMI Syntax
      * @return variable
      */
-    private static Optional<Variable> stringToVariable(String value, int smiSyntax, ComponentLog logger) {
+    private static Optional<Variable> stringToVariable(final String value, final int smiSyntax, final ComponentLog logger) {
         Variable var = AbstractVariable.createFromSyntax(smiSyntax);
         try {
             if (var instanceof AssignableFromString) {
@@ -278,23 +277,23 @@ public class SNMPUtils {
      * @param attributes {@link FlowFile} attributes
      * @return true if at least one {@link VariableBinding} has been created, false otherwise
      */
-    public static boolean addVariables(PDU pdu, Map<String, String> attributes, ComponentLog logger) {
+    public static boolean addVariables(final PDU pdu, final Map<String, String> attributes, final ComponentLog logger) {
         boolean result = false;
         for (Map.Entry<String, String> attributeEntry : attributes.entrySet()) {
             if (attributeEntry.getKey().startsWith(SNMPUtils.SNMP_PROP_PREFIX)) {
-                String[] splits = attributeEntry.getKey().split("\\" + SNMPUtils.SNMP_PROP_DELIMITER);
-                String snmpPropName = splits[1];
-                String snmpPropValue = attributeEntry.getValue();
+                final String[] splits = attributeEntry.getKey().split("\\" + SNMPUtils.SNMP_PROP_DELIMITER);
+                final String snmpPropName = splits[1];
+                final String snmpPropValue = attributeEntry.getValue();
                 if (SNMPUtils.OID_PATTERN.matcher(snmpPropName).matches()) {
-                    Optional<Variable> var;
+                    final Optional<Variable> var;
                     if (splits.length == 2) { // no SMI syntax defined
                         var = Optional.of(new OctetString(snmpPropValue));
                     } else {
-                        int smiSyntax = Integer.parseInt(splits[2]);
+                        final int smiSyntax = Integer.parseInt(splits[2]);
                         var = SNMPUtils.stringToVariable(snmpPropValue, smiSyntax, logger);
                     }
                     if (var.isPresent()) {
-                        VariableBinding varBind = new VariableBinding(new OID(snmpPropName), var.get());
+                        final VariableBinding varBind = new VariableBinding(new OID(snmpPropName), var.get());
                         pdu.add(varBind);
                         result = true;
                     }
@@ -304,7 +303,7 @@ public class SNMPUtils {
         return result;
     }
 
-    public static FlowFile createFlowFile(ProcessContext context, ProcessSession processSession, PDU pdu, PropertyDescriptor textualOid) {
+    public static FlowFile createFlowFile(final ProcessContext context, final ProcessSession processSession, final PDU pdu, final PropertyDescriptor textualOid) {
         FlowFile flowFile = processSession.create();
         flowFile = SNMPUtils.updateFlowFileAttributesWithPduProperties(pdu, flowFile, processSession);
         flowFile = SNMPUtils.addAttribute(SNMPUtils.SNMP_PROP_PREFIX + "textualOid", context.getProperty(textualOid).getValue(),
@@ -313,7 +312,7 @@ public class SNMPUtils {
     }
 
     private static Map<String, OID> createPrivMap() {
-        Map<String, OID> map = new HashMap<>();
+        final Map<String, OID> map = new HashMap<>();
         map.put("DES", PrivDES.ID);
         map.put("3DES", Priv3DES.ID);
         map.put("AES128", PrivAES128.ID);
@@ -323,14 +322,14 @@ public class SNMPUtils {
     }
 
     private static Map<String, OID> createAuthMap() {
-        Map<String, OID> map = new HashMap<>();
+        final Map<String, OID> map = new HashMap<>();
         map.put("SHA", AuthSHA.ID);
         map.put("MD5", AuthMD5.ID);
         return map;
     }
 
     private static Map<String, Integer> createVersionMap() {
-        Map<String, Integer> map = new HashMap<>();
+        final Map<String, Integer> map = new HashMap<>();
         map.put("SNMPv1", SnmpConstants.version1);
         map.put("SNMPv2c", SnmpConstants.version2c);
         map.put("SNMPv3", SnmpConstants.version3);

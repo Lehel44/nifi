@@ -41,14 +41,17 @@ public class SNMPTrapReceiver implements CommandResponder {
         this.context = context;
         this.processSession = processSession;
         this.logger = logger;
+    }
+
+    public void init() {
         snmp.addCommandResponder(this);
     }
 
     @Override
-    public void processPdu(CommandResponderEvent event) {
-        PDU pdu = event.getPDU();
+    public synchronized void processPdu(final CommandResponderEvent event) {
+        final PDU pdu = event.getPDU();
         if (pdu != null) {
-            FlowFile flowFile = createFlowFile(processSession, pdu);
+            final FlowFile flowFile = createFlowFile(processSession, pdu);
             processSession.getProvenanceReporter().receive(flowFile, event.getPeerAddress() + "/" + pdu.getRequestID());
             if (pdu.getErrorStatus() == PDU.noError) {
                 processSession.transfer(flowFile, REL_SUCCESS);
@@ -61,7 +64,7 @@ public class SNMPTrapReceiver implements CommandResponder {
         }
     }
 
-    private FlowFile createFlowFile(ProcessSession processSession, PDU pdu) {
+    private FlowFile createFlowFile(final ProcessSession processSession, final PDU pdu) {
         FlowFile flowFile = processSession.create();
         flowFile = SNMPUtils.updateFlowFileAttributesWithPduProperties(pdu, flowFile, processSession);
         return flowFile;

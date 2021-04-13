@@ -28,12 +28,12 @@ import java.util.Iterator;
 public class SLF4JLogFactory extends LogFactory {
 
     @Override
-    protected LogAdapter createLogger(Class loggerClass) {
+    protected LogAdapter createLogger(final Class loggerClass) {
         return new SLF4JLogAdapter(LoggerFactory.getLogger(loggerClass.getName()));
     }
 
     @Override
-    protected LogAdapter createLogger(String className) {
+    protected LogAdapter createLogger(final String className) {
         return new SLF4JLogAdapter(LoggerFactory.getLogger(className));
     }
 

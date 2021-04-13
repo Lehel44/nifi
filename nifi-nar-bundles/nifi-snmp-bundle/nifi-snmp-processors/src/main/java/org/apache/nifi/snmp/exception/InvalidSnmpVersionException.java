@@ -18,7 +18,7 @@ package org.apache.nifi.snmp.exception;
 
 public class InvalidSnmpVersionException extends SNMPException {
 
-    public InvalidSnmpVersionException(String errorMessage) {
+    public InvalidSnmpVersionException(final String errorMessage) {
         super(errorMessage);
     }
 

@@ -96,7 +96,7 @@ public class TargetConfigurationBuilder {
     }
 
     private void validate() {
-        boolean isValid = agentHost != null && agentPort != null && securityLevel != null;
+        boolean isValid = agentHost != null && agentPort != null;
         if (!isValid) {
             throw new IllegalStateException("Required properties are not set.");
         }

@@ -153,13 +153,14 @@ public class StandardValidators {
     public static final Validator NETWORK_ADDRESS_VALIDATOR = new Validator() {
         @Override
         public ValidationResult validate(final String subject, final String value, final ValidationContext context) {
+
             final String reason = "not a valid IP address";
-            final boolean isValidInetAddress = InetAddressValidator.getInstance().isValid(value);
+            final boolean isValidInetAddress = "localhost".equals(value) || InetAddressValidator.getInstance().isValid(value);
             return new ValidationResult.Builder().subject(subject).input(value).explanation(reason).valid(isValidInetAddress).build();
         }
     };
 
-    public static final Validator PORT_VALIDATOR = createLongValidator(1, 65535, true);
+    public static final Validator PORT_VALIDATOR = createLongValidator(0, 65535, true);
 
     /**
      * {@link Validator} that ensures that value's length > 0

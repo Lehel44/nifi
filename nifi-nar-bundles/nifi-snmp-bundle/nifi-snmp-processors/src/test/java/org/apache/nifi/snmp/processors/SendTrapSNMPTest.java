@@ -22,7 +22,7 @@ import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.remote.io.socket.NetworkUtils;
 import org.apache.nifi.snmp.configuration.TrapConfiguration;
 import org.apache.nifi.snmp.configuration.TrapConfigurationBuilder;
-import org.apache.nifi.snmp.context.SNMPClientFactory;
+import org.apache.nifi.snmp.helper.SNMPTestUtils;
 import org.apache.nifi.snmp.operations.SNMPTrapReceiver;
 import org.apache.nifi.snmp.utils.SNMPUtils;
 import org.apache.nifi.util.MockFlowFile;
@@ -34,45 +34,36 @@ import org.snmp4j.Snmp;
 import org.snmp4j.mp.SnmpConstants;
 import org.snmp4j.smi.TimeTicks;
 
-import java.io.IOException;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 public class SendTrapSNMPTest {
 
     @Test
-    public void testReceive() throws IOException, InterruptedException {
+    public void testReceive() throws InterruptedException {
 
-        int trapSenderClientPort = NetworkUtils.availablePort();
-        String trapSenderAgentHost = "0.0.0.0";
-        int trapSenderAgentPort = NetworkUtils.availablePort();
+        final int trapSenderListenPort = NetworkUtils.availablePort();
+        final int trapSenderAgentPort = NetworkUtils.availablePort();
 
-        TrapConfiguration configuration = new TrapConfigurationBuilder()
-                .setEnterpriseOid("1.3.6.1.4.1.1824")
-                .setAgentAddress("1.2.3.4")
-                .setManagerAddress("1.2.3.5")
-                .setGenericTrapType(PDUv1.ENTERPRISE_SPECIFIC)
-                .setSpecificTrapType(2)
-                .setTrapOidKey("1.3.6.1.4.1.1234.2.1.51")
-                .setTrapOidValue("TrapOidValue")
-                .setSysUptime(5000)
-                .build();
+        final TrapConfiguration configuration = createTrapConfiguration();
 
-        SendTrapSNMP sendTrapSNMP = new SendTrapSNMP();
-        TestRunner runner = TestRunners.newTestRunner(sendTrapSNMP);
-        setupTestRunner(runner, trapSenderClientPort, trapSenderAgentHost, trapSenderAgentPort, configuration);
+        // Create trap sender processor
+        final SendTrapSNMP sendTrapSNMP = new SendTrapSNMP();
+        final TestRunner runner = TestRunners.newTestRunner(sendTrapSNMP);
+        setupTestRunner(runner, trapSenderListenPort, trapSenderAgentPort, configuration);
 
-        Snmp snmp = SNMPClientFactory.createSnmpClient(String.valueOf(trapSenderAgentPort));
-        snmp.listen();
+        final Snmp snmp = SNMPTestUtils.createSnmpClientWithPort(trapSenderAgentPort);
 
+
+        // Create trap listener
         final ProcessContext processContext = runner.getProcessContext();
         final ProcessSession session = runner.getProcessSessionFactory().createSession();
         final ComponentLog logger = runner.getLogger();
 
-        new SNMPTrapReceiver(snmp, processContext, session, logger);
+        final SNMPTrapReceiver trapReceiver = new SNMPTrapReceiver(snmp, processContext, session, logger);
+        trapReceiver.init();
 
-        sendTrapSNMP.initSnmpClient(processContext);
+        sendTrapSNMP.init(processContext);
         sendTrapSNMP.onTrigger(processContext, session);
 
         Thread.sleep(200);
@@ -86,7 +77,21 @@ public class SendTrapSNMPTest {
         assertEquals(String.valueOf(new TimeTicks(configuration.getSysUptime())), successFF.getAttribute(SNMPUtils.SNMP_PROP_PREFIX + SnmpConstants.sysUpTime + SNMPUtils.SNMP_PROP_DELIMITER + "67"));
     }
 
-    private void setupTestRunner(TestRunner runner, int clientPort, String agentHost, int agentPort, TrapConfiguration configuration) {
+    private TrapConfiguration createTrapConfiguration() {
+        return new TrapConfigurationBuilder()
+                .setEnterpriseOid("1.3.6.1.4.1.1824")
+                .setAgentAddress("1.2.3.4")
+                .setManagerAddress("1.2.3.5")
+                .setGenericTrapType(PDUv1.ENTERPRISE_SPECIFIC)
+                .setSpecificTrapType(2)
+                .setTrapOidKey("1.3.6.1.4.1.1234.2.1.51")
+                .setTrapOidValue("TrapOidValue")
+                .setSysUptime(5000)
+                .build();
+    }
+
+    private void setupTestRunner(final TestRunner runner, final int clientPort, final int agentPort, final TrapConfiguration configuration) {
+        final String agentHost = "0.0.0.0";
         runner.setProperty(SendTrapSNMP.SNMP_CLIENT_PORT, String.valueOf(clientPort));
         runner.setProperty(SendTrapSNMP.AGENT_HOST, String.valueOf(agentHost));
         runner.setProperty(SendTrapSNMP.AGENT_PORT, String.valueOf(agentPort));

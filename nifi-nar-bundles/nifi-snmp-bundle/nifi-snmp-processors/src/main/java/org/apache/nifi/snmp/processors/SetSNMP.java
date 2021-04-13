@@ -28,9 +28,7 @@ import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.snmp.utils.SNMPUtils;
 import org.snmp4j.PDU;
-import org.snmp4j.ScopedPDU;
 import org.snmp4j.event.ResponseEvent;
-import org.snmp4j.mp.SnmpConstants;
 import org.snmp4j.util.DefaultPDUFactory;
 import org.snmp4j.util.PDUFactory;
 
@@ -54,7 +52,7 @@ import java.util.Set;
         " attribute to the corresponding OID given in the attribute name")
 public class SetSNMP extends AbstractSNMPProcessor {
 
-    private static PDUFactory pduFactory = new DefaultPDUFactory();
+    private static final PDUFactory PDU_FACTORY = new DefaultPDUFactory(PDU.SET);
 
     public static final Relationship REL_SUCCESS = new Relationship.Builder()
             .name("success")
@@ -88,20 +86,15 @@ public class SetSNMP extends AbstractSNMPProcessor {
     )));
 
     @OnScheduled
-    public void initSnmpClient(ProcessContext context) {
-        super.initSnmpClient(context);
-    }
-
-    @Override
-    protected String getClientPort() {
-        return DEFAULT_PORT;
+    public void init(ProcessContext context) {
+        initSnmpClient(context);
     }
 
     @Override
     public void onTrigger(ProcessContext context, ProcessSession processSession) {
-        FlowFile flowFile = processSession.get();
+        final FlowFile flowFile = processSession.get();
         if (flowFile != null) {
-            PDU pdu = pduFactory.createPDU(snmpRequestHandler.getTarget());
+            final PDU pdu = PDU_FACTORY.createPDU(snmpRequestHandler.getTarget());
             if (SNMPUtils.addVariables(pdu, flowFile.getAttributes(), getLogger())) {
                 pdu.setType(PDU.SET);
                 processPdu(context, processSession, flowFile, pdu);
@@ -112,9 +105,9 @@ public class SetSNMP extends AbstractSNMPProcessor {
         }
     }
 
-    private void processPdu(ProcessContext context, ProcessSession processSession, FlowFile flowFile, PDU pdu) {
+    private void processPdu(final ProcessContext context, final ProcessSession processSession, FlowFile flowFile, final PDU pdu) {
         try {
-            ResponseEvent response = snmpRequestHandler.set(pdu);
+            final ResponseEvent response = snmpRequestHandler.set(pdu);
             if (response.getResponse() == null) {
                 processSession.transfer(processSession.penalize(flowFile), REL_FAILURE);
                 getLogger().error("Set request timed out or parameters are incorrect.");

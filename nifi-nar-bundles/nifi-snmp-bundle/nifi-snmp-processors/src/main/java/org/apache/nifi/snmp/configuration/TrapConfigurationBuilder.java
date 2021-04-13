@@ -4,8 +4,6 @@ import org.apache.nifi.util.StringUtils;
 import org.snmp4j.smi.OID;
 import org.snmp4j.smi.OctetString;
 
-import java.util.Optional;
-
 public class TrapConfigurationBuilder {
     private String enterpriseOid;
     private String agentAddress;

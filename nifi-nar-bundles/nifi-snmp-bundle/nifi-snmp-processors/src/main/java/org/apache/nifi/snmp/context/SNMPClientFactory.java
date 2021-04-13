@@ -41,7 +41,7 @@ public final class SNMPClientFactory {
     private static final String DEFAULT_HOST = "0.0.0.0";
     private static final String DEFAULT_PORT = "0";
 
-    public static Snmp createSnmpClient(TargetConfiguration configuration, String clientPort) {
+    public static Snmp createSnmpClient(final TargetConfiguration configuration, final String clientPort) {
         final int snmpVersion = configuration.getVersion();
         if (SnmpConstants.version3 == snmpVersion) {
             return createSnmpV3Client(configuration, clientPort);
@@ -64,14 +64,14 @@ public final class SNMPClientFactory {
         return snmp;
     }
 
-    private static Snmp createSnmpV3Client(TargetConfiguration configuration, String clientPort) {
-        Snmp snmp = createSimpleSnmpClient(clientPort);
+    private static Snmp createSnmpV3Client(final TargetConfiguration configuration, final String clientPort) {
+        final Snmp snmp = createSimpleSnmpClient(clientPort);
 
         // If there's a USM instance associated with the MPv3 bound to this Snmp instance (like an agent running
         // on the same host) it is not null.
         if (snmp.getUSM() == null) {
-            OctetString localEngineId = new OctetString(MPv3.createLocalEngineID());
-            USM usm = new USM(SecurityProtocols.getInstance(), localEngineId, 0);
+            final OctetString localEngineId = new OctetString(MPv3.createLocalEngineID());
+            final USM usm = new USM(SecurityProtocols.getInstance(), localEngineId, 0);
             SecurityModels.getInstance().addSecurityModel(usm);
         }
 

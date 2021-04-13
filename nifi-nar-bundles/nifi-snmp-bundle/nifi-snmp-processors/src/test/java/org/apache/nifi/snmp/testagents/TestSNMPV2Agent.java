@@ -40,7 +40,7 @@ public class TestSNMPV2Agent extends TestAgent {
     }
 
     @Override
-    protected void addViews(VacmMIB vacmMIB) {
+    protected void addViews(final VacmMIB vacmMIB) {
         vacmMIB.addGroup(SecurityModel.SECURITY_MODEL_SNMPv2c,
                 new OctetString("cpublic"),
                 new OctetString("v1v2group"),
@@ -74,8 +74,8 @@ public class TestSNMPV2Agent extends TestAgent {
     }
 
     @Override
-    protected void addCommunities(SnmpCommunityMIB communityMIB) {
-        Variable[] com2sec = new Variable[]{
+    protected void addCommunities(final SnmpCommunityMIB communityMIB) {
+        final Variable[] com2sec = new Variable[]{
                 new OctetString("public"), // community name
                 new OctetString("cpublic"), // security name
                 this.getAgent().getContextEngineID(), // local engine ID

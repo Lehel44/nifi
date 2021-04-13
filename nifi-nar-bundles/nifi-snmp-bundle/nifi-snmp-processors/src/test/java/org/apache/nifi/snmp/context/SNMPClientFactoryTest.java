@@ -23,13 +23,13 @@ import org.junit.Test;
 import org.mockito.internal.util.collections.Iterables;
 import org.snmp4j.Snmp;
 import org.snmp4j.TransportMapping;
+import org.snmp4j.mp.SnmpConstants;
 import org.snmp4j.security.UsmUser;
 import org.snmp4j.smi.Address;
 import org.snmp4j.smi.OID;
 import org.snmp4j.smi.OctetString;
 import org.snmp4j.smi.UdpAddress;
 
-import java.io.IOException;
 import java.util.Collection;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -54,12 +54,12 @@ public class SNMPClientFactoryTest {
 
     @Test
     public void testFactoryCreatesSnmpV1V2cClientWithCorrectTransportMapping() {
-        String clientPort = String.valueOf(NetworkUtils.availablePort());
-        TargetConfiguration configuration = configurationBuilder
-                .setVersion(SNMPVersion.SNMP_V1)
+        final String clientPort = String.valueOf(NetworkUtils.availablePort());
+        final TargetConfiguration configuration = configurationBuilder
+                .setVersion(SnmpConstants.version1)
                 .build();
 
-        Snmp snmp = SNMPClientFactory.createSnmpClient(configuration, clientPort);
+        final Snmp snmp = SNMPClientFactory.createSnmpClient(configuration, clientPort);
 
         final Collection<TransportMapping> transportMappings = snmp.getMessageDispatcher().getTransportMappings();
 
@@ -79,10 +79,10 @@ public class SNMPClientFactoryTest {
     }
 
     @Test
-    public void testSnmpV3ClientWithoutCorrespondingAgentDoesNotHaveUSM() throws IOException {
-        String clientPort = String.valueOf(NetworkUtils.availablePort());
-        TargetConfiguration configuration = configurationBuilder
-                .setVersion(SNMPVersion.SNMP_V3)
+    public void testSnmpV3ClientWithoutCorrespondingAgentDoesNotHaveUSM() {
+        final String clientPort = String.valueOf(NetworkUtils.availablePort());
+        final TargetConfiguration configuration = configurationBuilder
+                .setVersion(SnmpConstants.version3)
                 .build();
 
         final Snmp snmpClient = SNMPClientFactory.createSnmpClient(configuration, clientPort);

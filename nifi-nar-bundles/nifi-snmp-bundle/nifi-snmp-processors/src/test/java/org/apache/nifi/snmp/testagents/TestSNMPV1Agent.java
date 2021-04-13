@@ -36,7 +36,7 @@ public class TestSNMPV1Agent extends TestAgent {
     }
 
     @Override
-    protected void addViews(VacmMIB vacmMIB) {
+    protected void addViews(final VacmMIB vacmMIB) {
         vacmMIB.addGroup(SecurityModel.SECURITY_MODEL_SNMPv1,
                 new OctetString("cpublic"),
                 new OctetString("v1v2group"),

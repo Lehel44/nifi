@@ -30,7 +30,6 @@ import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.snmp.configuration.TrapConfiguration;
 import org.apache.nifi.snmp.configuration.TrapConfigurationBuilder;
-import org.apache.nifi.snmp.operations.SNMPTrapSender;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -71,6 +70,7 @@ public class SendTrapSNMP extends AbstractSNMPProcessor {
             .description("Generic trap type is an integer in the range of 0 to 6. See Usage for details.")
             .required(true)
             .allowableValues("0", "1", "2", "3", "4", "5", "6")
+            .addValidator(StandardValidators.createLongValidator(0, 6, true))
             .build();
 
     public static final PropertyDescriptor SPECIFIC_TRAP_TYPE = new PropertyDescriptor.Builder()
@@ -81,6 +81,7 @@ public class SendTrapSNMP extends AbstractSNMPProcessor {
                     "code is vendor-specific")
             .required(false)
             .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
+            .dependsOn(GENERIC_TRAP_TYPE, "6")
             .build();
 
     public static final PropertyDescriptor TRAP_OID = new PropertyDescriptor.Builder()
@@ -154,14 +155,11 @@ public class SendTrapSNMP extends AbstractSNMPProcessor {
             REL_FAILURE
     )));
 
-    private volatile SNMPTrapSender snmpTrapSender;
     private volatile TrapConfiguration trapConfiguration;
 
     @OnScheduled
-    @Override
-    public void initSnmpClient(ProcessContext context) {
-        super.initSnmpClient(context);
-        snmpTrapSender = new SNMPTrapSender(snmpClient, target);
+    public void init(ProcessContext context) {
+        initSnmpClient(context);
         trapConfiguration = new TrapConfigurationBuilder()
                 .setEnterpriseOid(context.getProperty(ENTERPRISE_OID).getValue())
                 .setAgentAddress(context.getProperty(AGENT_ADDRESS).getValue())
@@ -184,8 +182,8 @@ public class SendTrapSNMP extends AbstractSNMPProcessor {
      * @throws ProcessException Process exception
      */
     @Override
-    public void onTrigger(ProcessContext context, ProcessSession processSession) {
-        snmpTrapSender.sendTrap(trapConfiguration);
+    public void onTrigger(final ProcessContext context, final ProcessSession processSession) {
+        snmpRequestHandler.sendTrap(trapConfiguration);
     }
 
     @Override

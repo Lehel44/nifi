@@ -38,17 +38,17 @@ public class SNMPUtilsTest {
      */
     @Test
     public void validateUpdateFlowFileAttributes() {
-        GetSNMP processor = new GetSNMP();
-        ProcessSession processSession = new MockProcessSession(new SharedSessionState(processor, new AtomicLong()),
+        final GetSNMP processor = new GetSNMP();
+        final ProcessSession processSession = new MockProcessSession(new SharedSessionState(processor, new AtomicLong()),
                 processor);
-        FlowFile sourceFlowFile = processSession.create();
+        final FlowFile sourceFlowFile = processSession.create();
 
-        PDU pdu = new PDU();
+        final PDU pdu = new PDU();
         pdu.setErrorIndex(0);
         pdu.setErrorStatus(0);
         pdu.setType(4);
 
-        FlowFile f2 = SNMPUtils.updateFlowFileAttributesWithPduProperties(pdu, sourceFlowFile,
+        final FlowFile f2 = SNMPUtils.updateFlowFileAttributesWithPduProperties(pdu, sourceFlowFile,
                 processSession);
 
         assertEquals("0", f2.getAttributes().get(SNMPUtils.SNMP_PROP_PREFIX + "errorIndex"));

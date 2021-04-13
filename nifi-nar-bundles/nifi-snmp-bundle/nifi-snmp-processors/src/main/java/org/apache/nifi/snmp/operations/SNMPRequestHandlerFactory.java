@@ -5,16 +5,13 @@ import org.apache.nifi.snmp.context.SNMPClientFactory;
 import org.apache.nifi.snmp.context.TargetFactory;
 import org.snmp4j.Snmp;
 import org.snmp4j.Target;
-import org.snmp4j.util.DefaultPDUFactory;
-import org.snmp4j.util.PDUFactory;
 
 public final class SNMPRequestHandlerFactory {
 
-    public static SNMPRequestHandler createStandardRequestHandler(TargetConfiguration configuration, String clientPort) {
-        Snmp snmpClient = SNMPClientFactory.createSnmpClient(configuration, clientPort);
-        Target target = TargetFactory.createTarget(configuration);
-        PDUFactory pduFactory = new DefaultPDUFactory();
-        return new StandardSNMPRequestHandler(snmpClient, target, pduFactory);
+    public static SNMPRequestHandler createStandardRequestHandler(final TargetConfiguration configuration, final String clientPort) {
+        final Snmp snmpClient = SNMPClientFactory.createSnmpClient(configuration, clientPort);
+        final Target target = TargetFactory.createTarget(configuration);
+        return new StandardSNMPRequestHandler(snmpClient, target);
     }
 
     private SNMPRequestHandlerFactory() {

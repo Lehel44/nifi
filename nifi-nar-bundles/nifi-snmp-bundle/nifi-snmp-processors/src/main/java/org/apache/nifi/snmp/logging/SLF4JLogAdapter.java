@@ -31,7 +31,7 @@ public class SLF4JLogAdapter implements LogAdapter {
 
     private final Logger logger;
 
-    public SLF4JLogAdapter(Logger logger) {
+    public SLF4JLogAdapter(final Logger logger) {
         this.logger = logger;
     }
 
@@ -48,38 +48,38 @@ public class SLF4JLogAdapter implements LogAdapter {
     }
 
 
-    public void debug(Serializable message) {
+    public void debug(final Serializable message) {
         if (isDebugEnabled()) {
-            logger.debug(message.toString());
+            logger.debug("{}", message);
         }
     }
 
-    public void info(CharSequence message) {
+    public void info(final CharSequence message) {
         if (isInfoEnabled()) {
-            logger.info(message.toString());
+            logger.info("{}", message);
         }
     }
 
-    public void warn(Serializable message) {
+    public void warn(final Serializable message) {
         if (isWarnEnabled()) {
-            logger.warn(message.toString());
+            logger.warn("{}", message);
         }
     }
 
-    public void error(Serializable message) {
-        logger.error(message.toString());
+    public void error(final Serializable message) {
+        logger.error("{}", message);
     }
 
-    public void error(CharSequence message, Throwable t) {
-        logger.error(message.toString(), t);
+    public void error(final CharSequence message, final Throwable t) {
+        logger.error("{}", message, t);
     }
 
-    public void fatal(Object message) {
-        logger.error(message.toString());
+    public void fatal(final Object message) {
+        logger.error("{}", message);
     }
 
-    public void fatal(CharSequence message, Throwable t) {
-        logger.error(message.toString(), t);
+    public void fatal(final CharSequence message, final Throwable t) {
+        logger.error("{}", message, t);
     }
 
 
@@ -99,23 +99,7 @@ public class SLF4JLogAdapter implements LogAdapter {
         return logger.getName();
     }
 
-    public void setLogLevel(LogLevel logLevel) {
+    public void setLogLevel(final LogLevel logLevel) {
         // no need to set log level
-    }
-
-    private void log(LogLevel logLevel, String msg, Throwable t) {
-        if (logLevel == LogLevel.ERROR || logLevel == LogLevel.FATAL) {
-            if (t == null) {
-                error(msg);
-            } else {
-                error(msg, t);
-            }
-        } else if (logLevel == LogLevel.WARN) {
-            warn(msg);
-        } else if (logLevel == LogLevel.INFO) {
-            info(msg);
-        } else {
-            debug(msg);
-        }
     }
 }

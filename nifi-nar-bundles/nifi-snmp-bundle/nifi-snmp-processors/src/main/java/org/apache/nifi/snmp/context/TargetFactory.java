@@ -29,7 +29,7 @@ import java.util.Optional;
 
 public final class TargetFactory {
 
-    public static Target createTarget(TargetConfiguration configuration) {
+    public static Target createTarget(final TargetConfiguration configuration) {
         final int snmpVersion = configuration.getVersion();
         if (SnmpConstants.version3 == snmpVersion) {
             return createUserTarget(configuration);
@@ -38,11 +38,11 @@ public final class TargetFactory {
         }
     }
 
-    private static Target createUserTarget(TargetConfiguration configuration) {
-        UserTarget userTarget = new UserTarget();
+    private static Target createUserTarget(final TargetConfiguration configuration) {
+        final UserTarget userTarget = new UserTarget();
         setupTargetBasicProperties(userTarget, configuration);
 
-        int securityLevel = SecurityLevel.valueOf(configuration.getSecurityLevel()).getSnmpValue();
+        final int securityLevel = SecurityLevel.valueOf(configuration.getSecurityLevel()).getSnmpValue();
         userTarget.setSecurityLevel(securityLevel);
 
         final String securityName = configuration.getSecurityName();
@@ -51,17 +51,17 @@ public final class TargetFactory {
         return userTarget;
     }
 
-    private static Target createCommunityTarget(TargetConfiguration configuration) {
-        Target communityTarget = new CommunityTarget();
+    private static Target createCommunityTarget(final TargetConfiguration configuration) {
+        final Target communityTarget = new CommunityTarget();
         setupTargetBasicProperties(communityTarget, configuration);
-        String community = configuration.getCommunityString();
+        final String community = configuration.getCommunityString();
 
         Optional.ofNullable(community).map(OctetString::new).ifPresent(communityTarget::setSecurityName);
 
         return communityTarget;
     }
 
-    private static void setupTargetBasicProperties(Target target, TargetConfiguration configuration) {
+    private static void setupTargetBasicProperties(final Target target, final TargetConfiguration configuration) {
         final int snmpVersion = configuration.getVersion();
         final String host = configuration.getAgentHost();
         final String port = configuration.getAgentPort();

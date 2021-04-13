@@ -29,7 +29,7 @@ public abstract class TestAgent extends BaseAgent {
     protected final String host;
     protected final int port;
 
-    public TestAgent(File bootCounterFile, File configFile, CommandProcessor commandProcessor, final String host) {
+    public TestAgent(final File bootCounterFile, final File configFile, final CommandProcessor commandProcessor, final String host) {
         super(bootCounterFile, configFile, commandProcessor);
         port = NetworkUtils.availablePort();
         this.host = host + "/" + port;
@@ -38,8 +38,8 @@ public abstract class TestAgent extends BaseAgent {
     @Override
     protected void initTransportMappings() {
         transportMappings = new TransportMapping[1];
-        Address transportAddress = GenericAddress.parse(host);
-        TransportMapping<? extends Address> transportMapping = TransportMappings.getInstance().createTransportMapping(transportAddress);
+        final Address transportAddress = GenericAddress.parse(host);
+        final TransportMapping<? extends Address> transportMapping = TransportMappings.getInstance().createTransportMapping(transportAddress);
         transportMappings[0] = transportMapping;
     }
 
@@ -64,7 +64,7 @@ public abstract class TestAgent extends BaseAgent {
         }
     }
 
-    public void registerManagedObjects(ManagedObject... managedObjects) {
+    public void registerManagedObjects(final ManagedObject... managedObjects) {
         Arrays.stream(managedObjects).forEach(this::registerManagedObject);
     }
 
@@ -72,23 +72,21 @@ public abstract class TestAgent extends BaseAgent {
     protected void unregisterManagedObjects() {
     }
 
-    protected void unregisterManagedObject(MOGroup moGroup) {
+    protected void unregisterManagedObject(final MOGroup moGroup) {
         moGroup.unregisterMOs(server, getContext(moGroup));
     }
 
     @Override
-    protected void addUsmUser(USM usm) {
-
+    protected void addUsmUser(final USM usm) {
     }
 
     @Override
-    protected void addNotificationTargets(SnmpTargetMIB targetMIB, SnmpNotificationMIB notificationMIB) {
-
+    protected void addNotificationTargets(final SnmpTargetMIB targetMIB, final SnmpNotificationMIB notificationMIB) {
     }
 
     @Override
-    protected void addCommunities(SnmpCommunityMIB communityMIB) {
-        Variable[] com2sec = new Variable[]{
+    protected void addCommunities(final SnmpCommunityMIB communityMIB) {
+        final Variable[] com2sec = new Variable[]{
                 new OctetString("public"), // community name
                 new OctetString("cpublic"), // security name
                 this.getAgent().getContextEngineID(), // local engine ID

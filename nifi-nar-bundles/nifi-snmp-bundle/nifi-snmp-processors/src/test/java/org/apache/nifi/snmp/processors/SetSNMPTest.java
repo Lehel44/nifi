@@ -60,9 +60,8 @@ public class SetSNMPTest {
     }
 
     @Test
-    public void testSnmpV1Set() throws InterruptedException {
-
-        TestRunner runner = getTestRunner2(LOCALHOST, String.valueOf(snmpV1Agent.getPort()), VALID_OID_FF_ATTRIBUTE, true);
+    public void testSnmpV1Set() {
+        final TestRunner runner = getTestRunner(LOCALHOST, String.valueOf(snmpV1Agent.getPort()), VALID_OID_FF_ATTRIBUTE, true);
         runner.run();
         final MockFlowFile successFF = runner.getFlowFilesForRelationship(SetSNMP.REL_SUCCESS).get(0);
         assertNotNull(successFF);
@@ -70,40 +69,37 @@ public class SetSNMPTest {
     }
 
     @Test
-    public void testSnmpV1SetEmptyFlowFileResultsInFailure() throws InterruptedException {
-
-        TestRunner runner = getTestRunner2(LOCALHOST, String.valueOf(snmpV1Agent.getPort()), TEST_OID.toString(), false);
+    public void testSnmpV1SetEmptyFlowFileResultsInFailure() {
+        final TestRunner runner = getTestRunner(LOCALHOST, String.valueOf(snmpV1Agent.getPort()), TEST_OID.toString(), false);
         runner.run();
         final MockFlowFile failureFF = runner.getFlowFilesForRelationship(SetSNMP.REL_FAILURE).get(0);
         assertNotNull(failureFF);
     }
 
     @Test
-    public void testSnmpSetWithInvalidAddressResultsInFailure() throws InterruptedException {
-
-        TestRunner runner = getTestRunner2("127.0.0.2", String.valueOf(snmpV1Agent.getPort()), TEST_OID.toString(), true);
+    public void testSnmpSetWithInvalidAddressResultsInFailure() {
+        final TestRunner runner = getTestRunner("127.0.0.2", String.valueOf(snmpV1Agent.getPort()), TEST_OID.toString(), true);
         runner.run();
         final MockFlowFile failureFF = runner.getFlowFilesForRelationship(SetSNMP.REL_FAILURE).get(0);
         assertNotNull(failureFF);
     }
 
     @Test
-    public void testSnmpSetWithInvalidOIDResultsInFailure() throws InterruptedException {
-
-        TestRunner runner = getTestRunner2(LOCALHOST, String.valueOf(snmpV1Agent.getPort()), INVALID_OID_FF_ATTRIBUTE, true);
+    public void testSnmpSetWithInvalidOIDResultsInFailure() {
+        final TestRunner runner = getTestRunner(LOCALHOST, String.valueOf(snmpV1Agent.getPort()), INVALID_OID_FF_ATTRIBUTE, true);
         runner.run();
         final MockFlowFile failureFF = runner.getFlowFilesForRelationship(SetSNMP.REL_FAILURE).get(0);
         assertNotNull(failureFF);
     }
 
 
-    private TestRunner getTestRunner2(String host, String port, String oid, boolean withAttributes) {
-        SetSNMP processor = new SetSNMP();
-        TestRunner runner = TestRunners.newTestRunner(processor);
-        MockFlowFile ff = new MockFlowFile(123);
+    private TestRunner getTestRunner(final String host, final String port, final String oid, final boolean withAttributes) {
+        final SetSNMP processor = new SetSNMP();
+        final TestRunner runner = TestRunners.newTestRunner(processor);
+        final MockFlowFile ff = new MockFlowFile(123);
         if (withAttributes) {
             final Map<String, String> attributes = ff.getAttributes();
-            Map<String, String> newAttributes = new HashMap<>(attributes);
+            final Map<String, String> newAttributes = new HashMap<>(attributes);
             newAttributes.put(oid, TEST_OID_VALUE);
             ff.putAttributes(newAttributes);
         }

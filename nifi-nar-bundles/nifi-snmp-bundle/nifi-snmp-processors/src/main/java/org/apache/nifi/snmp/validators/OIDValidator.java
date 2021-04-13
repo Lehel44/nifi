@@ -27,7 +27,7 @@ public class OIDValidator implements Validator {
     public static final Pattern OID_PATTERN = Pattern.compile("[0-9+.]*");
 
     @Override
-    public ValidationResult validate(String subject, String input, ValidationContext context) {
+    public ValidationResult validate(final String subject, final String input, final ValidationContext context) {
         final ValidationResult.Builder builder = new ValidationResult.Builder();
         builder.subject(subject).input(input);
         if (context.isExpressionLanguageSupported(subject) && context.isExpressionLanguagePresent(input)) {

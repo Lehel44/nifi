@@ -41,6 +41,8 @@ public class GetSNMPTest {
     private static final OID readOnlyOID2 = new OID("1.3.6.1.4.1.32437.1.5.1.4.3.0");
     private static final String OIDValue1 = "TestOID1";
     private static final String OIDValue2 = "TestOID2";
+    private static final String GET = "GET";
+    private static final String WALK = "WALK";
 
     @BeforeClass
     public static void setUp() throws IOException {
@@ -58,8 +60,8 @@ public class GetSNMPTest {
     }
 
     @Test
-    public void testSnmpV1Get() throws InterruptedException {
-        TestRunner runner = getTestRunner(readOnlyOID1.toString(), String.valueOf(snmpV1Agent.getPort()), "GET");
+    public void testSnmpV1Get() {
+        final TestRunner runner = getTestRunner(readOnlyOID1.toString(), String.valueOf(snmpV1Agent.getPort()), GET);
         runner.run();
         final MockFlowFile successFF = runner.getFlowFilesForRelationship(GetSNMP.REL_SUCCESS).get(0);
         assertNotNull(successFF);
@@ -67,8 +69,8 @@ public class GetSNMPTest {
     }
 
     @Test
-    public void testSnmpV1Walk() throws InterruptedException {
-        TestRunner runner = getTestRunner("1.3.6.1.4.1.32437", String.valueOf(snmpV1Agent.getPort()), "WALK");
+    public void testSnmpV1Walk() {
+        final TestRunner runner = getTestRunner("1.3.6.1.4.1.32437", String.valueOf(snmpV1Agent.getPort()), WALK);
         runner.run();
         final MockFlowFile successFF = runner.getFlowFilesForRelationship(GetSNMP.REL_SUCCESS).get(0);
         assertNotNull(successFF);
@@ -77,16 +79,16 @@ public class GetSNMPTest {
     }
 
     @Test
-    public void testInvalidPduResultsInFailure() throws InterruptedException {
-        TestRunner runner = getTestRunner("1.3.6.1.4.1.32437.0", String.valueOf(snmpV1Agent.getPort()), "GET");
+    public void testInvalidPduResultsInFailure() {
+        final TestRunner runner = getTestRunner("1.3.6.1.4.1.32437.0", String.valueOf(snmpV1Agent.getPort()), GET);
         runner.run();
         final MockFlowFile failureFF = runner.getFlowFilesForRelationship(GetSNMP.REL_FAILURE).get(0);
         assertNotNull(failureFF);
         assertEquals("No such name", failureFF.getAttribute(SNMPUtils.SNMP_PROP_PREFIX + "errorStatusText"));
     }
 
-    private TestRunner getTestRunner(String oid, String port, String strategy) {
-        TestRunner runner = TestRunners.newTestRunner(GetSNMP.class);
+    private TestRunner getTestRunner(final String oid, final String port, final String strategy) {
+        final TestRunner runner = TestRunners.newTestRunner(GetSNMP.class);
         runner.setProperty(GetSNMP.OID, oid);
         runner.setProperty(GetSNMP.AGENT_HOST, "127.0.0.1");
         runner.setProperty(GetSNMP.AGENT_PORT, port);

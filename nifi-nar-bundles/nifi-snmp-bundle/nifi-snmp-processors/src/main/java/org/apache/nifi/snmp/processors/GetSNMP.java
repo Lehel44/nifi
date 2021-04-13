@@ -70,16 +70,6 @@ public class GetSNMP extends AbstractSNMPProcessor {
             .addValidator(new OIDValidator())
             .build();
 
-    // Textual OID to request.
-    public static final PropertyDescriptor TEXTUAL_OID = new PropertyDescriptor.Builder()
-            .name("snmp-textual-oid")
-            .displayName("Textual OID")
-            .description("The textual OID to request")
-            .required(false)
-            .addValidator(StandardValidators.NON_BLANK_VALIDATOR)
-            .defaultValue(null)
-            .build();
-
     // SNMP strategy for SNMP Get processor: GET or WALK.
     public static final PropertyDescriptor SNMP_STRATEGY = new PropertyDescriptor.Builder()
             .name("snmp-strategy")
@@ -88,6 +78,16 @@ public class GetSNMP extends AbstractSNMPProcessor {
             .required(true)
             .allowableValues("GET", "WALK")
             .defaultValue("GET")
+            .build();
+
+    // Textual OID to request.
+    public static final PropertyDescriptor TEXTUAL_OID = new PropertyDescriptor.Builder()
+            .name("snmp-textual-oid")
+            .displayName("Textual OID")
+            .description("The textual OID to request")
+            .required(false)
+            .addValidator(StandardValidators.NON_BLANK_VALIDATOR)
+            .defaultValue(null)
             .build();
 
     public static final Relationship REL_SUCCESS = new Relationship.Builder()
@@ -128,14 +128,8 @@ public class GetSNMP extends AbstractSNMPProcessor {
 
 
     @OnScheduled
-    @Override
-    public void initSnmpClient(ProcessContext context) {
-        super.initSnmpClient(context);
-    }
-
-    @Override
-    protected String getClientPort() {
-        return DEFAULT_PORT;
+    public void init(ProcessContext context) {
+        initSnmpClient(context);
     }
 
     /**
@@ -148,7 +142,7 @@ public class GetSNMP extends AbstractSNMPProcessor {
      * @throws ProcessException Process exception
      */
     @Override
-    public void onTrigger(ProcessContext context, ProcessSession processSession) {
+    public void onTrigger(final ProcessContext context, final ProcessSession processSession) {
         final String targetUri = snmpRequestHandler.getTarget().getAddress().toString();
         final SNMPStrategy snmpStrategy = SNMPStrategy.valueOf(context.getProperty(SNMP_STRATEGY).getValue());
         final String oid = context.getProperty(OID).getValue();
@@ -175,11 +169,11 @@ public class GetSNMP extends AbstractSNMPProcessor {
         }
     }
 
-    private void performSnmpGet(ProcessContext context, ProcessSession processSession, String targetUri, String oid) {
+    private void performSnmpGet(final ProcessContext context, final ProcessSession processSession, final String targetUri, final String oid) {
         final ResponseEvent response = snmpRequestHandler.get(new OID(oid));
         if (response.getResponse() != null) {
-            PDU pdu = response.getResponse();
-            FlowFile flowFile = SNMPUtils.createFlowFile(context, processSession, pdu, TEXTUAL_OID);
+            final PDU pdu = response.getResponse();
+            final FlowFile flowFile = SNMPUtils.createFlowFile(context, processSession, pdu, TEXTUAL_OID);
             processSession.getProvenanceReporter().receive(flowFile, targetUri + "/" + oid);
             if (pdu.getErrorStatus() == PDU.noError) {
                 processSession.transfer(flowFile, REL_SUCCESS);

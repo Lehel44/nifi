@@ -37,6 +37,7 @@ import org.snmp4j.security.SecurityLevel;
 import org.snmp4j.smi.OID;
 import org.snmp4j.smi.OctetString;
 import org.snmp4j.smi.VariableBinding;
+import org.snmp4j.util.DefaultPDUFactory;
 
 import java.io.IOException;
 
@@ -50,6 +51,7 @@ public class SNMPSetterTest {
     private static final OID writeOnlyOID = new OID("1.3.6.1.4.1.32437.1.5.1.4.3.0");
     private static final String readOnlyOIDValue = "readOnlyOID";
     private static final String writeOnlyOIDValue = "writeOnlyOID";
+    private static final DefaultPDUFactory PDU_FACTORY = new DefaultPDUFactory();
 
     private static TestSNMPV1Agent snmpV1Agent;
     private static TestSNMPV2Agent snmpV2Agent;
@@ -86,14 +88,14 @@ public class SNMPSetterTest {
 
     @Test
     public void testSuccessfulSnmpV1Set() throws IOException {
-        Snmp snmp = SNMPTestUtils.createSnmp();
-        CommunityTarget target = SNMPTestUtils.createCommTarget("public", LOCALHOST + "/" + snmpV1Agent.getPort(), SnmpConstants.version1);
-        String expectedOIDValue = "testValue";
-        StandardSNMPRequestHandler standardSnmpRequestHandler = new StandardSNMPRequestHandler(snmp, target);
-        PDU pdu = new PDU();
+        final Snmp snmp = SNMPTestUtils.createSnmpClient();
+        final CommunityTarget target = SNMPTestUtils.createCommTarget("public", LOCALHOST + "/" + snmpV1Agent.getPort(), SnmpConstants.version1);
+        final String expectedOIDValue = "testValue";
+        final StandardSNMPRequestHandler standardSnmpRequestHandler = new StandardSNMPRequestHandler(snmp, target);
+        final PDU pdu = new PDU();
         pdu.add(new VariableBinding(writeOnlyOID, new OctetString(expectedOIDValue)));
         pdu.setType(PDU.SET);
-        ResponseEvent response = standardSnmpRequestHandler.set(pdu);
+        final ResponseEvent response = standardSnmpRequestHandler.set(pdu);
 
         assertEquals(expectedOIDValue, response.getResponse().get(0).getVariable().toString());
 
@@ -101,14 +103,14 @@ public class SNMPSetterTest {
 
     @Test
     public void testSuccessfulSnmpV2Set() throws IOException {
-        Snmp snmp = SNMPTestUtils.createSnmp();
-        CommunityTarget target = SNMPTestUtils.createCommTarget("public", LOCALHOST + "/" + snmpV2Agent.getPort(), SnmpConstants.version2c);
-        String expectedOIDValue = "testValue";
-        StandardSNMPRequestHandler standardSnmpRequestHandler = new StandardSNMPRequestHandler(snmp, target);
-        PDU pdu = new PDU();
+        final Snmp snmp = SNMPTestUtils.createSnmpClient();
+        final CommunityTarget target = SNMPTestUtils.createCommTarget("public", LOCALHOST + "/" + snmpV2Agent.getPort(), SnmpConstants.version2c);
+        final String expectedOIDValue = "testValue";
+        final StandardSNMPRequestHandler standardSnmpRequestHandler = new StandardSNMPRequestHandler(snmp, target);
+        final PDU pdu = new PDU();
         pdu.add(new VariableBinding(readOnlyOID, new OctetString(expectedOIDValue)));
         pdu.setType(PDU.SET);
-        ResponseEvent response = standardSnmpRequestHandler.set(pdu);
+        final ResponseEvent response = standardSnmpRequestHandler.set(pdu);
 
         assertEquals(expectedOIDValue, response.getResponse().get(0).getVariable().toString());
 
@@ -116,15 +118,15 @@ public class SNMPSetterTest {
 
     @Test
     public void testSuccessfulSnmpV3Set() throws IOException {
-        Snmp snmp = SNMPTestUtils.createSnmp();
+        final Snmp snmp = SNMPTestUtils.createSnmpClient();
         final UserTarget userTarget = SNMPTestUtils.prepareUser(snmp, LOCALHOST + "/" + snmpV3Agent.getPort(), SecurityLevel.AUTH_NOPRIV,
                 "SHA", AuthSHA.ID, null, "SHAAuthPassword", null);
-        String expectedOIDValue = "testValue";
-        StandardSNMPRequestHandler standardSnmpRequestHandler = new StandardSNMPRequestHandler(snmp, userTarget);
-        ScopedPDU pdu = new ScopedPDU();
+        final String expectedOIDValue = "testValue";
+        final StandardSNMPRequestHandler standardSnmpRequestHandler = new StandardSNMPRequestHandler(snmp, userTarget);
+        final ScopedPDU pdu = new ScopedPDU();
         pdu.add(new VariableBinding(writeOnlyOID, new OctetString(expectedOIDValue)));
         pdu.setType(PDU.SET);
-        ResponseEvent response = standardSnmpRequestHandler.set(pdu);
+        final ResponseEvent response = standardSnmpRequestHandler.set(pdu);
 
         assertEquals(expectedOIDValue, response.getResponse().get(0).getVariable().toString());
 
@@ -132,15 +134,15 @@ public class SNMPSetterTest {
 
     @Test
     public void testCannotSetReadOnlyObject() throws IOException {
-        Snmp snmp = SNMPTestUtils.createSnmp();
+        final Snmp snmp = SNMPTestUtils.createSnmpClient();
         final UserTarget userTarget = SNMPTestUtils.prepareUser(snmp, LOCALHOST + "/" + snmpV3Agent.getPort(), SecurityLevel.AUTH_NOPRIV,
                 "SHA", AuthSHA.ID, null, "SHAAuthPassword", null);
-        String expectedOIDValue = "testValue";
-        StandardSNMPRequestHandler standardSnmpRequestHandler = new StandardSNMPRequestHandler(snmp, userTarget);
-        ScopedPDU pdu = new ScopedPDU();
+        final String expectedOIDValue = "testValue";
+        final StandardSNMPRequestHandler standardSnmpRequestHandler = new StandardSNMPRequestHandler(snmp, userTarget);
+        final ScopedPDU pdu = new ScopedPDU();
         pdu.add(new VariableBinding(readOnlyOID, new OctetString(expectedOIDValue)));
         pdu.setType(PDU.SET);
-        ResponseEvent response = standardSnmpRequestHandler.set(pdu);
+        final ResponseEvent response = standardSnmpRequestHandler.set(pdu);
 
         assertEquals(expectedOIDValue, response.getResponse().get(0).getVariable().toString());
 
