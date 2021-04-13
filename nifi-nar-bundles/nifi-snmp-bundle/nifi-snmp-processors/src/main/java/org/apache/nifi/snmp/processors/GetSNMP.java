@@ -27,6 +27,7 @@ import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
+import org.apache.nifi.processor.ProcessSessionFactory;
 import org.apache.nifi.processor.Processor;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.exception.ProcessException;
@@ -46,7 +47,7 @@ import java.util.Set;
 
 /**
  * Retrieving data from configured SNMP agent which, upon each invocation of
- * {@link #onTrigger(ProcessContext, ProcessSession)} method, will construct a
+ * {@link #onTrigger(ProcessContext, ProcessSessionFactory)} method, will construct a
  * {@link FlowFile} containing in its properties the information retrieved.
  * The output {@link FlowFile} won't have any content.
  */
@@ -134,19 +135,19 @@ public class GetSNMP extends AbstractSNMPProcessor {
 
     /**
      * Delegate method to supplement
-     * {@link #onTrigger(ProcessContext, ProcessSession)}. It is implemented by
+     * {@link #onTrigger(ProcessContext, ProcessSessionFactory)}. It is implemented by
      * sub-classes to perform {@link Processor} specific functionality.
      *
-     * @param context        instance of {@link ProcessContext}
-     * @param processSession instance of {@link ProcessSession}
+     * @param context               instance of {@link ProcessContext}
+     * @param processSessionFactory instance of {@link ProcessSessionFactory}
      * @throws ProcessException Process exception
      */
     @Override
-    public void onTrigger(final ProcessContext context, final ProcessSession processSession) {
+    public void onTrigger(final ProcessContext context, final ProcessSessionFactory processSessionFactory) {
         final String targetUri = snmpRequestHandler.getTarget().getAddress().toString();
         final SNMPStrategy snmpStrategy = SNMPStrategy.valueOf(context.getProperty(SNMP_STRATEGY).getValue());
         final String oid = context.getProperty(OID).getValue();
-
+        final ProcessSession processSession = processSessionFactory.createSession();
         if (SNMPStrategy.GET == snmpStrategy) {
             performSnmpGet(context, processSession, targetUri, oid);
         } else if (SNMPStrategy.WALK == snmpStrategy) {

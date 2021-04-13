@@ -24,6 +24,7 @@ import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
+import org.apache.nifi.processor.ProcessSessionFactory;
 import org.apache.nifi.processor.Processor;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.exception.ProcessException;
@@ -174,15 +175,15 @@ public class SendTrapSNMP extends AbstractSNMPProcessor {
 
     /**
      * Delegate method to supplement
-     * {@link #onTrigger(ProcessContext, ProcessSession)}. It is implemented by
+     * {@link #onTrigger(ProcessContext, ProcessSessionFactory)}. It is implemented by
      * sub-classes to perform {@link Processor} specific functionality.
      *
-     * @param context        instance of {@link ProcessContext}
-     * @param processSession instance of {@link ProcessSession}
+     * @param context               instance of {@link ProcessContext}
+     * @param processSessionFactory instance of {@link ProcessSession}
      * @throws ProcessException Process exception
      */
     @Override
-    public void onTrigger(final ProcessContext context, final ProcessSession processSession) {
+    public void onTrigger(final ProcessContext context, final ProcessSessionFactory processSessionFactory) {
         snmpRequestHandler.sendTrap(trapConfiguration);
     }
 

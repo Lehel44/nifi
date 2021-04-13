@@ -18,7 +18,7 @@ package org.apache.nifi.snmp.processors;
 
 import org.apache.nifi.logging.ComponentLog;
 import org.apache.nifi.processor.ProcessContext;
-import org.apache.nifi.processor.ProcessSession;
+import org.apache.nifi.processor.ProcessSessionFactory;
 import org.apache.nifi.remote.io.socket.NetworkUtils;
 import org.apache.nifi.snmp.configuration.TrapConfiguration;
 import org.apache.nifi.snmp.configuration.TrapConfigurationBuilder;
@@ -57,14 +57,14 @@ public class SendTrapSNMPTest {
 
         // Create trap listener
         final ProcessContext processContext = runner.getProcessContext();
-        final ProcessSession session = runner.getProcessSessionFactory().createSession();
+        final ProcessSessionFactory processSessionFactory = runner.getProcessSessionFactory();
         final ComponentLog logger = runner.getLogger();
 
-        final SNMPTrapReceiver trapReceiver = new SNMPTrapReceiver(snmp, processContext, session, logger);
+        final SNMPTrapReceiver trapReceiver = new SNMPTrapReceiver(snmp, processContext, processSessionFactory, logger);
         trapReceiver.init();
 
         sendTrapSNMP.init(processContext);
-        sendTrapSNMP.onTrigger(processContext, session);
+        sendTrapSNMP.onTrigger(processContext, processSessionFactory);
 
         Thread.sleep(200);
 
@@ -93,7 +93,7 @@ public class SendTrapSNMPTest {
     private void setupTestRunner(final TestRunner runner, final int clientPort, final int agentPort, final TrapConfiguration configuration) {
         final String agentHost = "0.0.0.0";
         runner.setProperty(SendTrapSNMP.SNMP_CLIENT_PORT, String.valueOf(clientPort));
-        runner.setProperty(SendTrapSNMP.AGENT_HOST, String.valueOf(agentHost));
+        runner.setProperty(SendTrapSNMP.AGENT_HOST, agentHost);
         runner.setProperty(SendTrapSNMP.AGENT_PORT, String.valueOf(agentPort));
         runner.setProperty(SendTrapSNMP.SNMP_COMMUNITY, "public");
         runner.setProperty(SendTrapSNMP.SNMP_VERSION, "SNMPv1");

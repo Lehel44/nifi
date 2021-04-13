@@ -25,6 +25,7 @@ import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
+import org.apache.nifi.processor.ProcessSessionFactory;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.snmp.utils.SNMPUtils;
 import org.snmp4j.PDU;
@@ -41,7 +42,7 @@ import java.util.Set;
 
 /**
  * Performs a SNMP Set operation based on attributes of incoming FlowFile.
- * Upon each invocation of {@link #onTrigger(ProcessContext, ProcessSession)}
+ * Upon each invocation of {@link #onTrigger(ProcessContext, ProcessSessionFactory)}
  * method, it will inspect attributes of FlowFile and look for attributes with
  * name formatted as "snmp$OID" to set the attribute value to this OID.
  */
@@ -91,7 +92,8 @@ public class SetSNMP extends AbstractSNMPProcessor {
     }
 
     @Override
-    public void onTrigger(ProcessContext context, ProcessSession processSession) {
+    public void onTrigger(ProcessContext context, ProcessSessionFactory processSessionFactory) {
+        final ProcessSession processSession = processSessionFactory.createSession();
         final FlowFile flowFile = processSession.get();
         if (flowFile != null) {
             final PDU pdu = PDU_FACTORY.createPDU(snmpRequestHandler.getTarget());

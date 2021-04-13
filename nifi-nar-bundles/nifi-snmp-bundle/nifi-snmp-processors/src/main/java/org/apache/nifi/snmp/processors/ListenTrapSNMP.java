@@ -26,6 +26,7 @@ import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
+import org.apache.nifi.processor.ProcessSessionFactory;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.snmp.operations.SNMPTrapReceiver;
 import org.apache.nifi.snmp.utils.SNMPUtils;
@@ -98,9 +99,9 @@ public class ListenTrapSNMP extends AbstractSNMPProcessor {
     }
 
     @Override
-    public void onTrigger(final ProcessContext context, final ProcessSession session) {
+    public void onTrigger(final ProcessContext context, final ProcessSessionFactory processSessionFactory) {
         if (Objects.isNull(trapReceiver)) {
-            trapReceiver = new SNMPTrapReceiver(snmpRequestHandler.getSnmpClient(), context, session, getLogger());
+            trapReceiver = new SNMPTrapReceiver(snmpRequestHandler.getSnmpClient(), context, processSessionFactory, getLogger());
             trapReceiver.init();
         }
     }

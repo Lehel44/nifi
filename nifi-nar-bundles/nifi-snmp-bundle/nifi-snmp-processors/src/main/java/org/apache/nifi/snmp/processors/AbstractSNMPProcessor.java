@@ -18,7 +18,7 @@ package org.apache.nifi.snmp.processors;
 
 import org.apache.nifi.annotation.lifecycle.OnStopped;
 import org.apache.nifi.components.PropertyDescriptor;
-import org.apache.nifi.processor.AbstractProcessor;
+import org.apache.nifi.processor.AbstractSessionFactoryProcessor;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.snmp.configuration.TargetConfiguration;
@@ -46,7 +46,7 @@ import static org.apache.nifi.snmp.utils.DefinedValues.SNMP_V3;
  * Base processor that uses SNMP4J client API.
  * (http://www.snmp4j.org/)
  */
-abstract class AbstractSNMPProcessor extends AbstractProcessor {
+abstract class AbstractSNMPProcessor extends AbstractSessionFactoryProcessor {
 
     static {
         LogFactory.setLogFactory(new SLF4JLogFactory());
