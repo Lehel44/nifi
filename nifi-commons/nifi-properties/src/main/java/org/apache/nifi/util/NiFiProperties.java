@@ -153,6 +153,8 @@ public abstract class NiFiProperties {
     public static final String SECURITY_TRUSTSTORE = "nifi.security.truststore";
     public static final String SECURITY_TRUSTSTORE_TYPE = "nifi.security.truststoreType";
     public static final String SECURITY_TRUSTSTORE_PASSWD = "nifi.security.truststorePasswd";
+    public static final String SECURITY_AUTO_RELOAD_ENABLED = "nifi.security.autoreload.enabled";
+    public static final String SECURITY_AUTO_RELOAD_INTERVAL = "nifi.security.autoreload.interval";
     public static final String SECURITY_USER_AUTHORIZER = "nifi.security.user.authorizer";
     public static final String SECURITY_ANONYMOUS_AUTHENTICATION = "nifi.security.allow.anonymous.authentication";
     public static final String SECURITY_USER_LOGIN_IDENTITY_PROVIDER = "nifi.security.user.login.identity.provider";
@@ -207,6 +209,8 @@ public abstract class NiFiProperties {
     public static final String WEB_HTTPS_PORT = "nifi.web.https.port";
     public static final String WEB_HTTPS_PORT_FORWARDING = "nifi.web.https.port.forwarding";
     public static final String WEB_HTTPS_HOST = "nifi.web.https.host";
+    public static final String WEB_HTTPS_CIPHERSUITES_INCLUDE = "nifi.web.https.ciphersuites.include";
+    public static final String WEB_HTTPS_CIPHERSUITES_EXCLUDE = "nifi.web.https.ciphersuites.exclude";
     public static final String WEB_HTTPS_NETWORK_INTERFACE_PREFIX = "nifi.web.https.network.interface.";
     public static final String WEB_WORKING_DIR = "nifi.web.jetty.working.directory";
     public static final String WEB_THREADS = "nifi.web.jetty.threads";
@@ -215,6 +219,8 @@ public abstract class NiFiProperties {
     public static final String WEB_PROXY_HOST = "nifi.web.proxy.host";
     public static final String WEB_MAX_CONTENT_SIZE = "nifi.web.max.content.size";
     public static final String WEB_MAX_REQUESTS_PER_SECOND = "nifi.web.max.requests.per.second";
+    public static final String WEB_REQUEST_TIMEOUT = "nifi.web.request.timeout";
+    public static final String WEB_REQUEST_IP_WHITELIST = "nifi.web.request.ip.whitelist";
     public static final String WEB_SHOULD_SEND_SERVER_VERSION = "nifi.web.should.send.server.version";
 
     // ui properties
@@ -303,6 +309,7 @@ public abstract class NiFiProperties {
     public static final String DEFAULT_WEB_WORKING_DIR = "./work/jetty";
     public static final String DEFAULT_WEB_MAX_CONTENT_SIZE = "20 MB";
     public static final String DEFAULT_WEB_MAX_REQUESTS_PER_SECOND = "30000";
+    public static final String DEFAULT_WEB_REQUEST_TIMEOUT = "60 secs";
     public static final String DEFAULT_NAR_WORKING_DIR = "./work/nar";
     public static final String DEFAULT_COMPONENT_DOCS_DIRECTORY = "./work/docs/components";
     public static final String DEFAULT_NAR_LIBRARY_DIR = "./lib";
@@ -323,6 +330,7 @@ public abstract class NiFiProperties {
     public static final String DEFAULT_ZOOKEEPER_AUTH_TYPE = "default";
     public static final String DEFAULT_ZOOKEEPER_KERBEROS_REMOVE_HOST_FROM_PRINCIPAL = "true";
     public static final String DEFAULT_ZOOKEEPER_KERBEROS_REMOVE_REALM_FROM_PRINCIPAL = "true";
+    public static final String DEFAULT_SECURITY_AUTO_RELOAD_INTERVAL = "10 secs";
     public static final String DEFAULT_SITE_TO_SITE_HTTP_TRANSACTION_TTL = "30 secs";
     public static final String DEFAULT_FLOW_CONFIGURATION_ARCHIVE_ENABLED = "true";
     public static final String DEFAULT_FLOW_CONFIGURATION_ARCHIVE_MAX_TIME = "30 days";
@@ -672,6 +680,14 @@ public abstract class NiFiProperties {
         return getProperty(WEB_MAX_REQUESTS_PER_SECOND, DEFAULT_WEB_MAX_REQUESTS_PER_SECOND);
     }
 
+    public String getWebRequestTimeout() {
+        return getProperty(WEB_REQUEST_TIMEOUT, DEFAULT_WEB_REQUEST_TIMEOUT);
+    }
+
+    public String getWebRequestIpWhitelist() {
+        return getProperty(WEB_REQUEST_IP_WHITELIST);
+    }
+
     public int getWebThreads() {
         return getIntegerProperty(WEB_THREADS, DEFAULT_WEB_THREADS);
     }
@@ -747,6 +763,22 @@ public abstract class NiFiProperties {
      */
     public String getAutoRefreshInterval() {
         return getProperty(UI_AUTO_REFRESH_INTERVAL);
+    }
+
+    /**
+     * Returns true if auto reload of the keystore and truststore is enabled.
+     * @return true if auto reload of the keystore and truststore is enabled.
+     */
+    public boolean isSecurityAutoReloadEnabled() {
+        return this.getProperty(SECURITY_AUTO_RELOAD_ENABLED, Boolean.FALSE.toString()).equals(Boolean.TRUE.toString());
+    }
+
+    /**
+     * Returns the auto reload interval of the keystore and truststore.
+     * @return The interval over which the keystore and truststore should auto-reload.
+     */
+    public String getSecurityAutoReloadInterval() {
+        return getProperty(SECURITY_AUTO_RELOAD_INTERVAL, DEFAULT_SECURITY_AUTO_RELOAD_INTERVAL);
     }
 
     // getters for cluster protocol properties //

@@ -585,7 +585,8 @@ public class TailFile extends AbstractProcessor {
         for (TailFileObject tfo : states.values()) {
             cleanReader(tfo);
             final TailFileState state = tfo.getState();
-            tfo.setState(new TailFileState(state.getFilename(), state.getFile(), null, state.getPosition(), state.getTimestamp(), state.getLength(), state.getChecksum(), state.getBuffer()));
+            tfo.setState(new TailFileState(state.getFilename(), state.getFile(), null, state.getPosition(),
+                state.getTimestamp(), state.getLength(), state.getChecksum(), state.getBuffer(), state.isTailingPostRollover()));
         }
     }
 
@@ -824,24 +825,6 @@ public class TailFile extends AbstractProcessor {
             }
         });
 
-        if (abort.get() != null) {
-            session.remove(flowFile);
-            final long newPosition = positionHolder.get();
-            try {
-                reader.position(newPosition);
-            } catch (IOException ex) {
-                getLogger().warn("Couldn't reposition the reader for {} due to {}", new Object[]{ file, ex }, ex);
-                try {
-                    reader.close();
-                } catch (IOException ex2) {
-                    getLogger().warn("Failed to close reader for {} due to {}", new Object[]{ file, ex2 }, ex2);
-                }
-                reader = null;
-            }
-            tfo.setState(new TailFileState(tailFile, file, reader, newPosition, timestamp, length, checksum, state.getBuffer()));
-            throw abort.get();
-        }
-
         // If there ended up being no data, just remove the FlowFile
         if (flowFile.getSize() == 0) {
             session.remove(flowFile);
@@ -882,6 +865,22 @@ public class TailFile extends AbstractProcessor {
         tfo.setState(new TailFileState(tailFile, file, reader, position, timestamp, length, checksum, state.getBuffer()));
 
         persistState(tfo, session, context);
+
+        if (abort.get() != null) {
+            final long newPosition = positionHolder.get();
+            try {
+                reader.position(newPosition);
+            } catch (IOException ex) {
+                getLogger().warn("Couldn't reposition the reader for {} due to {}", new Object[]{ file, ex }, ex);
+                try {
+                    reader.close();
+                } catch (IOException ex2) {
+                    getLogger().warn("Failed to close reader for {} due to {}", new Object[]{ file, ex2 }, ex2);
+                }
+            }
+
+            throw abort.get();
+        }
     }
 
     private long readLines(final FileChannel reader, final ByteBuffer buffer, final OutputStream out, final Checksum checksum, Boolean reReadOnNul) throws IOException {
@@ -1208,8 +1207,8 @@ public class TailFile extends AbstractProcessor {
             final boolean tailFirstFile;
             if (rolloverOccurred) {
                 final File firstFile = rolledOffFiles.get(0);
-                final long millisSinceModified = System.currentTimeMillis() - firstFile.lastModified();
-                final boolean fileGrew = firstFile.length() >= position && position > 0;
+                final long millisSinceModified = getCurrentTimeMs() - firstFile.lastModified();
+                final boolean fileGrew = firstFile.length() >= position;
                 final boolean tailRolledFile = postRolloverTailMillis == 0 || millisSinceModified < postRolloverTailMillis;
                 tailFirstFile = fileGrew && tailRolledFile && expectedChecksum != null;
             } else {
@@ -1244,7 +1243,7 @@ public class TailFile extends AbstractProcessor {
                 // If we don't notice that the file has been modified, per the checks above, then we want to keep checking until the last modified
                 // date has eclipsed the configured value for the Post-Rollover Tail Period. Until then, return false. Once that occurs, we will
                 // consume the rest of the data, including the last line, even if it doesn't have a line ending.
-                final long millisSinceModified = System.currentTimeMillis() - newestFile.lastModified();
+                final long millisSinceModified = getCurrentTimeMs() - newestFile.lastModified();
                 if (millisSinceModified < postRolloverTailMillis) {
                     getLogger().debug("Rolled over file {} (size={}, lastModified={}) was modified {} millis ago, which isn't long enough to consume file fully without taking line endings into " +
                         "account. Will do nothing will file for now.", newestFile, newestFile.length(), newestFile.lastModified(), millisSinceModified);
@@ -1306,12 +1305,21 @@ public class TailFile extends AbstractProcessor {
             final FileChannel channel = fis.getChannel();
             final long timestamp = fileToTail.lastModified();
 
-            try {
-                flowFile = session.write(flowFile, out -> readLines(channel, buffer, out, checksum, reReadOnNul, readFully));
-            } catch (NulCharacterEncounteredException ncee) {
-                session.remove(flowFile);
-                throw ncee;
-            }
+            final AtomicReference<NulCharacterEncounteredException> abort = new AtomicReference<>();
+
+            flowFile = session.write(flowFile, out -> {
+                try {
+                    readLines(channel, buffer, out, checksum, reReadOnNul, readFully);
+                } catch (final NulCharacterEncounteredException ncee) {
+                    abort.set(ncee);
+
+                    // Log the fact that we encountered a NUL character and yield. But we don't re-throw the Exception because
+                    // we want to continue on with the same logic of transferring non-zero flowfiles, removing 0-byte flowfiles,
+                    // and maintaining our state.
+                    getLogger().info("Encountered NUL character when tailing file {}; will yield", tailFile);
+                    context.yield();
+                }
+            });
 
             if (flowFile.getSize() == 0L) {
                 session.remove(flowFile);
@@ -1334,7 +1342,7 @@ public class TailFile extends AbstractProcessor {
             // updated values.
             // But if we are not going to tail the rolled over file for any period of time, we can essentially reset the state.
             final long postRolloverTailMillis = context.getProperty(POST_ROLLOVER_TAIL_PERIOD).asTimePeriod(TimeUnit.MILLISECONDS);
-            final long millisSinceUpdate = System.currentTimeMillis() - timestamp;
+            final long millisSinceUpdate = getCurrentTimeMs() - timestamp;
             if (tailingPostRollover && postRolloverTailMillis > 0) {
                 getLogger().debug("File {} has been rolled over, but it was updated {} millis ago, which is less than the configured {} ({} ms), so will continue tailing",
                     fileToTail, millisSinceUpdate, POST_ROLLOVER_TAIL_PERIOD.getDisplayName(), postRolloverTailMillis);
@@ -1346,6 +1354,11 @@ public class TailFile extends AbstractProcessor {
 
                 tfo.setState(updatedState);
             } else {
+                final NulCharacterEncounteredException ncee = abort.get();
+                if (ncee != null) {
+                    throw ncee;
+                }
+
                 // use a timestamp of lastModified() + 1 so that we do not ingest this file again.
                 getLogger().debug("Completed tailing of file {}; will cleanup state", tailFile);
                 cleanup();
@@ -1356,7 +1369,6 @@ public class TailFile extends AbstractProcessor {
             return true;
         }
     }
-
 
     /**
      * Creates a new FlowFile that contains the entire contents of the given
@@ -1395,6 +1407,10 @@ public class TailFile extends AbstractProcessor {
         }
 
         return tfo.getState();
+    }
+
+    public long getCurrentTimeMs() {
+        return System.currentTimeMillis();
     }
 
     static class TailFileObject {
