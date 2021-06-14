@@ -17,25 +17,6 @@
 
 package org.apache.nifi.reporting;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.when;
-
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-import javax.json.Json;
-import javax.json.JsonObject;
-import javax.json.JsonReader;
-import javax.json.JsonValue;
-
 import org.apache.nifi.attribute.expression.language.StandardPropertyValue;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.components.PropertyValue;
@@ -52,6 +33,24 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
+
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonReader;
+import javax.json.JsonValue;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.when;
 
 public class TestSiteToSiteBulletinReportingTask {
 
@@ -82,16 +81,16 @@ public class TestSiteToSiteBulletinReportingTask {
         // creating the list of bulletins
         final List<Bulletin> bulletins = new ArrayList<>();
         Bulletin bulletin = new Bulletin.Builder()
-                .setGroupId("group-id")
-                .setGroupName("group-name")
-                .setGroupPath("group-path")
-                .setSourceId("source-id")
-                .setSourceName("source-name")
-                .setSourceType(ComponentType.PROCESSOR)
-                .setCategory("category")
-                .setLevel("severity")
-                .setMessage("message")
-                .createBulletin();
+                .groupId("group-id")
+                .groupName("group-name")
+                .groupPath("group-path")
+                .sourceId("source-id")
+                .sourceName("source-name")
+                .sourceType(ComponentType.PROCESSOR)
+                .category("category")
+                .level("severity")
+                .message("message")
+                .build();
         bulletins.add(bulletin);
 
         // mock the access to the list of bulletins
@@ -140,13 +139,13 @@ public class TestSiteToSiteBulletinReportingTask {
         // creating the list of bulletins
         final List<Bulletin> bulletins = new ArrayList<>();
         Bulletin bulletin = new Bulletin.Builder()
-                .setGroupId("group-id")
-                .setSourceId("source-id")
-                .setSourceName("source-name")
-                .setCategory("category")
-                .setLevel("severity")
-                .setMessage("message")
-                .createBulletin();
+                .groupId("group-id")
+                .sourceId("source-id")
+                .sourceName("source-name")
+                .category("category")
+                .level("severity")
+                .message("message")
+                .build();
         bulletins.add(bulletin);
 
         // mock the access to the list of bulletins
@@ -197,7 +196,7 @@ public class TestSiteToSiteBulletinReportingTask {
 
         @Override
         public void setup(ReportingContext reportContext) {
-            if(siteToSiteClient == null) {
+            if (siteToSiteClient == null) {
                 final SiteToSiteClient client = Mockito.mock(SiteToSiteClient.class);
                 final Transaction transaction = Mockito.mock(Transaction.class);
 
