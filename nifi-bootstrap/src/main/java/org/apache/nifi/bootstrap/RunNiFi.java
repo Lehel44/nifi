@@ -726,6 +726,7 @@ public class RunNiFi {
 
         if (isBundle) {
             args = args + " --bundle=true";
+            args = args + " --bundle=true";
         }
 
         makeRequest(DIAGNOSTICS_CMD, args, dumpFile, "diagnostics information");

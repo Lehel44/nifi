@@ -35,7 +35,7 @@ import java.util.concurrent.TimeUnit;
 
 public class JVMDiagnosticTask implements DiagnosticTask {
     @Override
-    public DiagnosticsDumpElement captureDump(final boolean verbose) {
+    public DiagnosticsDumpElement captureDump(final boolean verbose, final boolean bundle) {
         final MemoryMXBean memory = ManagementFactory.getMemoryMXBean();
         final ClassLoadingMXBean classLoading = ManagementFactory.getClassLoadingMXBean();
         final MemoryUsage heap = memory.getHeapMemoryUsage();

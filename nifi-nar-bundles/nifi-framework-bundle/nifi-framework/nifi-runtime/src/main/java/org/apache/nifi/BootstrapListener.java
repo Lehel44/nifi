@@ -225,18 +225,21 @@ public class BootstrapListener {
                                         logger.info("Received DIAGNOSTICS request from Bootstrap");
                                         final String[] args = request.getArgs();
                                         boolean verbose = false;
+                                        boolean bundle = false;
                                         if (args == null) {
                                             verbose = false;
                                         } else {
                                             for (final String arg : args) {
                                                 if ("--verbose=true".equalsIgnoreCase(arg)) {
                                                     verbose = true;
-                                                    break;
+                                                }
+                                                if ("--bundle=true".equalsIgnoreCase(arg)) {
+                                                    bundle = true;
                                                 }
                                             }
                                         }
 
-                                        writeDiagnostics(socket.getOutputStream(), verbose);
+                                        writeDiagnostics(socket.getOutputStream(), verbose, bundle);
                                         break;
                                     case IS_LOADED:
                                         logger.debug("Received IS_LOADED request from Bootstrap");
@@ -264,7 +267,7 @@ public class BootstrapListener {
     }
 
     private void writeDump(final OutputStream out) throws IOException {
-        final DiagnosticsDump diagnosticsDump = nifi.getServer().getThreadDumpFactory().create(true);
+        final DiagnosticsDump diagnosticsDump = nifi.getServer().getThreadDumpFactory().create(true, true);
         diagnosticsDump.writeTo(out);
     }
 
@@ -277,8 +280,8 @@ public class BootstrapListener {
         decommissionTask.decommission();
     }
 
-    private void writeDiagnostics(final OutputStream out, final boolean verbose) throws IOException {
-        final DiagnosticsDump diagnosticsDump = nifi.getServer().getDiagnosticsFactory().create(verbose);
+    private void writeDiagnostics(final OutputStream out, final boolean verbose, final boolean bundle) throws IOException {
+        final DiagnosticsDump diagnosticsDump = nifi.getServer().getDiagnosticsFactory().create(verbose, bundle);
         diagnosticsDump.writeTo(out);
     }
 

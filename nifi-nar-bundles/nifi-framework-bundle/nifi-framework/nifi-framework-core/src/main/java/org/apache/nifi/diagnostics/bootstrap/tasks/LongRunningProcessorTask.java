@@ -39,7 +39,7 @@ public class LongRunningProcessorTask implements DiagnosticTask {
     }
 
     @Override
-    public DiagnosticsDumpElement captureDump(final boolean verbose) {
+    public DiagnosticsDumpElement captureDump(final boolean verbose, final boolean bundle) {
         final List<String> details = new ArrayList<>();
         final ThreadDetails threadDetails = ThreadDetails.capture();
 

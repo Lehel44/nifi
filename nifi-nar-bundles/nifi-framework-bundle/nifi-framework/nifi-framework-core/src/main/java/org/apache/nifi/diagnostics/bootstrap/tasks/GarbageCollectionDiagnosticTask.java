@@ -37,7 +37,7 @@ public class GarbageCollectionDiagnosticTask implements DiagnosticTask {
     }
 
     @Override
-    public DiagnosticsDumpElement captureDump(final boolean verbose) {
+    public DiagnosticsDumpElement captureDump(final boolean verbose, final boolean bundle) {
         final List<GarbageCollectorMXBean> garbageCollectors = ManagementFactory.getGarbageCollectorMXBeans();
 
         final List<String> details = new ArrayList<>();
