@@ -50,7 +50,7 @@ public class DiagnosticAnalysisTask implements DiagnosticTask {
     }
 
     @Override
-    public DiagnosticsDumpElement captureDump(final boolean verbose) {
+    public DiagnosticsDumpElement captureDump(final boolean verbose, final boolean bundle) {
         final List<String> details = new ArrayList<>();
 
         final List<ProcessorNode> allProcessors = flowController.getFlowManager().getRootGroup().findAllProcessors();

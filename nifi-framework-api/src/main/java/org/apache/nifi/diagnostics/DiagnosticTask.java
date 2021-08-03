@@ -17,5 +17,5 @@
 package org.apache.nifi.diagnostics;
 
 public interface DiagnosticTask {
-    DiagnosticsDumpElement captureDump(boolean verbose);
+    DiagnosticsDumpElement captureDump(boolean verbose, boolean bundle);
 }

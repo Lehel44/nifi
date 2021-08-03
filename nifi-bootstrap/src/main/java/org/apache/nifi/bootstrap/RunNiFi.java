@@ -185,36 +185,44 @@ public class RunNiFi {
     }
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        if (args.length < 1 || args.length > 3) {
+        if (args.length < 1 || args.length > 4) {
             printUsage();
             return;
         }
 
         File dumpFile = null;
         boolean verbose = false;
+        boolean bundle = false;
 
         final String cmd = args[0];
         if (cmd.equalsIgnoreCase("dump")) {
             if (args.length > 1) {
                 dumpFile = new File(args[1]);
-            } else {
-                dumpFile = null;
             }
         } else if (cmd.equalsIgnoreCase("diagnostics")) {
+            if (args.length > 3) {
+                if ("--verbose".equals(args[1]) || "--verbose".equals(args[2])) {
+                    verbose = true;
+                }
+                if ("--bundle".equals(args[1]) || "--bundle".equals(args[2])) {
+                    bundle = true;
+                }
+                dumpFile = new File(args[3]);
+            }
             if (args.length > 2) {
-                verbose = args[1].equalsIgnoreCase("--verbose");
+                if ("--verbose".equals(args[1])) {
+                    verbose = true;
+                } else if ("--bundle".equals(args[1])) {
+                    bundle = true;
+                }
                 dumpFile = new File(args[2]);
             } else if (args.length > 1) {
                 if (args[1].equalsIgnoreCase("--verbose")) {
                     verbose = true;
                     dumpFile = null;
                 } else {
-                    verbose = false;
                     dumpFile = new File(args[1]);
                 }
-            } else {
-                dumpFile = null;
-                verbose = false;
             }
         }
 
@@ -270,7 +278,7 @@ public class RunNiFi {
                 runNiFi.dump(dumpFile);
                 break;
             case "diagnostics":
-                runNiFi.diagnostics(dumpFile, verbose);
+                runNiFi.diagnostics(dumpFile, verbose, bundle);
                 break;
             case "env":
                 runNiFi.env();
@@ -713,8 +721,13 @@ public class RunNiFi {
     /**
      * Writes NiFi diagnostic information to the given file; if the file is null, logs at INFO level instead.
      */
-    public void diagnostics(final File dumpFile, final boolean verbose) throws IOException {
-        final String args = verbose ? "--verbose=true" : null;
+    public void diagnostics(final File dumpFile, final boolean verbose, final boolean isBundle) throws IOException {
+        String args = verbose ? "--verbose=true" : null;
+
+        if (isBundle) {
+            args = args + " --bundle=true";
+        }
+
         makeRequest(DIAGNOSTICS_CMD, args, dumpFile, "diagnostics information");
     }
 

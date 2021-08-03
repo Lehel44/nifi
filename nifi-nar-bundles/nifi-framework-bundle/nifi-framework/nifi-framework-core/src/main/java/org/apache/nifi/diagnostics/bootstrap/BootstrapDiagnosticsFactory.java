@@ -51,11 +51,11 @@ public class BootstrapDiagnosticsFactory implements DiagnosticsFactory {
     private NiFiProperties nifiProperties;
 
     @Override
-    public DiagnosticsDump create(final boolean verbose) {
+    public DiagnosticsDump create(final boolean verbose, final boolean bundle) {
         final List<DiagnosticsDumpElement> dumpElements = new ArrayList<>();
         for (final DiagnosticTask dumpTask : getDiagnosticTasks()) {
             try {
-                final DiagnosticsDumpElement dumpElement = dumpTask.captureDump(verbose);
+                final DiagnosticsDumpElement dumpElement = dumpTask.captureDump(verbose, bundle);
                 if (dumpElement != null) {
                     dumpElements.add(dumpElement);
                 }

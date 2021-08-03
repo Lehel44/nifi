@@ -17,5 +17,5 @@
 package org.apache.nifi.diagnostics;
 
 public interface DiagnosticsFactory {
-    DiagnosticsDump create(boolean verbose);
+    DiagnosticsDump create(boolean verbose, final boolean bundle);
 }
