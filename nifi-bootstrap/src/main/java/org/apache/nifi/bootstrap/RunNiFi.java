@@ -16,6 +16,8 @@
  */
 package org.apache.nifi.bootstrap;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.bootstrap.notification.NotificationType;
 import org.apache.nifi.bootstrap.util.OSUtils;
@@ -35,6 +37,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.lang.reflect.Method;
 import java.net.InetAddress;
@@ -219,6 +222,9 @@ public class RunNiFi {
             } else if (args.length > 1) {
                 if (args[1].equalsIgnoreCase("--verbose")) {
                     verbose = true;
+                    dumpFile = null;
+                } else if (args[1].equalsIgnoreCase("--bundle")) {
+                    bundle = true;
                     dumpFile = null;
                 } else {
                     dumpFile = new File(args[1]);
@@ -722,12 +728,11 @@ public class RunNiFi {
      * Writes NiFi diagnostic information to the given file; if the file is null, logs at INFO level instead.
      */
     public void diagnostics(final File dumpFile, final boolean verbose, final boolean isBundle) throws IOException {
-        String args = verbose ? "--verbose=true" : null;
-
         if (isBundle) {
-            args = args + " --bundle=true";
-            args = args + " --bundle=true";
+            makeBundleRequest(verbose);
         }
+
+        String args = verbose ? "--verbose=true" : null;
 
         makeRequest(DIAGNOSTICS_CMD, args, dumpFile, "diagnostics information");
     }
@@ -760,6 +765,51 @@ public class RunNiFi {
                 return Boolean.parseBoolean(line);
             }
         }
+    }
+
+    private void makeBundleRequest(final boolean verbose) throws IOException {
+        final Logger logger = defaultLogger;    // dump to bootstrap log file by default
+        final Integer port = getCurrentPort(logger);
+        if (port == null) {
+            logger.info("Apache NiFi is not currently running");
+            return;
+        }
+
+        // Create JSON
+        ObjectMapper mapper = new ObjectMapper();
+
+        // create a JSON object
+        ObjectNode user = mapper.createObjectNode();
+        user.put("id", 1);
+        user.put("name", "John Doe");
+        user.put("email", "john.doe@example.com");
+        user.put("salary", 3545.99);
+        user.put("role", "QA Engineer");
+        user.put("admin", false);
+
+        // convert `ObjectNode` to pretty-print JSON
+        // without pretty-print, use `user.toString()` method
+        String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(user);
+
+        try (final Socket socket = new Socket()) {
+            socket.setSoTimeout(60000);
+            socket.connect(new InetSocketAddress("localhost", port));
+            socket.setSoTimeout(60000);
+
+            final Properties nifiProps = loadProperties(logger);
+            final String secretKey = nifiProps.getProperty("secret.key");
+
+            final OutputStream socketOut = socket.getOutputStream();
+
+            try (OutputStreamWriter out = new OutputStreamWriter(
+                    socket.getOutputStream(), StandardCharsets.UTF_8)) {
+                out.write("BUNDLE" + " " + secretKey + " " + json + "\n");
+            }
+
+
+
+            socketOut.flush();
+            }
     }
 
     private void makeRequest(final String request, final String arguments, final File dumpFile, final String contentsDescription) throws IOException {

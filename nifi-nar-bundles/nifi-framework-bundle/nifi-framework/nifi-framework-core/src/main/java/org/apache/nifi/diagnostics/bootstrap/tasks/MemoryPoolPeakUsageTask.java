@@ -28,7 +28,7 @@ import java.util.List;
 
 public class MemoryPoolPeakUsageTask implements DiagnosticTask {
     @Override
-    public DiagnosticsDumpElement captureDump(final boolean verbose, final boolean bundle) {
+    public DiagnosticsDumpElement captureDump(final boolean verbose) {
         final List<MemoryPoolMXBean> pools = ManagementFactory.getMemoryPoolMXBeans();
 
         final List<String> details = new ArrayList<>();

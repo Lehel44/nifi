@@ -40,7 +40,7 @@ public class ComponentCountTask implements DiagnosticTask {
     }
 
     @Override
-    public DiagnosticsDumpElement captureDump(final boolean verbose, final boolean bundle) {
+    public DiagnosticsDumpElement captureDump(final boolean verbose) {
         final List<String> details = new ArrayList<>();
 
         final ProcessGroup processGroup = flowController.getFlowManager().getRootGroup();

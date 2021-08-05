@@ -45,7 +45,7 @@ public class ContentRepositoryScanTask implements DiagnosticTask {
     }
 
     @Override
-    public DiagnosticsDumpElement captureDump(final boolean verbose, final boolean bundle) {
+    public DiagnosticsDumpElement captureDump(final boolean verbose) {
         if (!verbose) {
             // This task is very expensive, as it must scan the contents of the Content Repository. As such, it will not
             // run at all if verbose output is disabled.

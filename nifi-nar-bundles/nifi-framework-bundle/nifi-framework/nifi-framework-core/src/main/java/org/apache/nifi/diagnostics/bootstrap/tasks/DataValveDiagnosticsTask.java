@@ -36,7 +36,7 @@ public class DataValveDiagnosticsTask implements DiagnosticTask {
     }
 
     @Override
-    public DiagnosticsDumpElement captureDump(final boolean verbose, final boolean bundle) {
+    public DiagnosticsDumpElement captureDump(final boolean verbose) {
         final ProcessGroup rootGroup = flowManager.getRootGroup();
         final List<ProcessGroup> allGroups = rootGroup.findAllProcessGroups();
         allGroups.add(rootGroup);

@@ -42,7 +42,7 @@ public class OperatingSystemDiagnosticTask implements DiagnosticTask {
     private static final Set<String> IGNORABLE_ATTRIBUTE_NAMES = new HashSet<>(Arrays.asList("ObjectName", ""));
 
     @Override
-    public DiagnosticsDumpElement captureDump(final boolean verbose, final boolean bundle) {
+    public DiagnosticsDumpElement captureDump(final boolean verbose) {
         final OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
         final List<String> details = new ArrayList<>();
 

@@ -221,6 +221,12 @@ public class BootstrapListener {
                                         }
 
                                         break;
+                                    case BUNDLE:
+                                        logger.info("Received BUNDLE request from Bootstrap");
+                                        String logPath = System.getProperty("Dorg.apache.nifi.bootstrap.config.log.dir");
+                                        final String[] json = request.getArgs();
+                                        System.out.println(logPath);
+                                        break;
                                     case DIAGNOSTICS:
                                         logger.info("Received DIAGNOSTICS request from Bootstrap");
                                         final String[] args = request.getArgs();
@@ -267,7 +273,7 @@ public class BootstrapListener {
     }
 
     private void writeDump(final OutputStream out) throws IOException {
-        final DiagnosticsDump diagnosticsDump = nifi.getServer().getThreadDumpFactory().create(true, true);
+        final DiagnosticsDump diagnosticsDump = nifi.getServer().getThreadDumpFactory().create(true);
         diagnosticsDump.writeTo(out);
     }
 
@@ -281,7 +287,7 @@ public class BootstrapListener {
     }
 
     private void writeDiagnostics(final OutputStream out, final boolean verbose, final boolean bundle) throws IOException {
-        final DiagnosticsDump diagnosticsDump = nifi.getServer().getDiagnosticsFactory().create(verbose, bundle);
+        final DiagnosticsDump diagnosticsDump = nifi.getServer().getDiagnosticsFactory().create(verbose);
         diagnosticsDump.writeTo(out);
     }
 
@@ -333,6 +339,7 @@ public class BootstrapListener {
             RELOAD,
             SHUTDOWN,
             DUMP,
+            BUNDLE,
             DIAGNOSTICS,
             DECOMMISSION,
             PING,

@@ -34,7 +34,7 @@ public class NarsDiagnosticTask implements DiagnosticTask {
     }
 
     @Override
-    public DiagnosticsDumpElement captureDump(final boolean verbose, final boolean isBundle) {
+    public DiagnosticsDumpElement captureDump(final boolean verbose) {
         final List<String> nars = new ArrayList<>();
         for (final Bundle bundle : extensionManager.getAllBundles()) {
             nars.add(bundle.getBundleDetails().getCoordinate().toString());
