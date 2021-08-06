@@ -16,6 +16,9 @@
  */
 package org.apache.nifi;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nifi.controller.DecommissionTask;
 import org.apache.nifi.diagnostics.DiagnosticsDump;
 import org.apache.nifi.util.LimitingInputStream;
@@ -32,6 +35,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -223,8 +228,15 @@ public class BootstrapListener {
                                         break;
                                     case BUNDLE:
                                         logger.info("Received BUNDLE request from Bootstrap");
-                                        String logPath = System.getProperty("Dorg.apache.nifi.bootstrap.config.log.dir");
-                                        final String[] json = request.getArgs();
+                                        String logPath = System.getProperty("org.apache.nifi.bootstrap.config.log.dir");
+                                        final String json = String.join("", request.getArgs());
+                                        ObjectMapper mapper = new ObjectMapper();
+                                        final JsonNode jsonNode = mapper.readTree(json);
+                                        String tmpdir = Files.createTempDirectory("tmpDirPrefix").toFile().getAbsolutePath();
+                                        ObjectNode objectNode = mapper.createObjectNode();
+                                        objectNode.put("status", "ok");
+                                        objectNode.put("path", tmpdir);
+
                                         System.out.println(logPath);
                                         break;
                                     case DIAGNOSTICS:

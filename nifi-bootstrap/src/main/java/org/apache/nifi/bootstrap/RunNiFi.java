@@ -16,6 +16,9 @@
  */
 package org.apache.nifi.bootstrap;
 
+import com.fasterxml.jackson.core.util.DefaultIndenter;
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang3.StringUtils;
@@ -178,7 +181,7 @@ public class RunNiFi {
         System.out.println("Status : Determine if there is a running instance of Apache NiFi");
         System.out.println("Dump : Write a Thread Dump to the file specified by [options], or to the log if no file is given");
         System.out.println("Diagnostics : Write diagnostic information to the file specified by [options], or to the log if no file is given. The --verbose flag may be provided as an option before " +
-            "the filename, which may result in additional diagnostic information being written.");
+                "the filename, which may result in additional diagnostic information being written.");
         System.out.println("Run : Start a new instance of Apache NiFi and monitor the Process, restarting if the instance dies");
         System.out.println();
     }
@@ -551,24 +554,25 @@ public class RunNiFi {
         }
 
         final int port = Integer.parseInt(portVal);
-        final boolean success = isPingSuccessful(port, props.getProperty("secret.key"), logger);
-        if (success) {
-            logger.debug("Successful PING on port {}", port);
-            return port;
-        }
+//        final boolean success = isPingSuccessful(port, props.getProperty("secret.key"), logger);
+        return port;
+//        if (success) {
+//            logger.debug("Successful PING on port {}", port);
+//            return port;
+//        }
 
-        final String pid = props.getProperty(PID_KEY);
-        logger.debug("PID in status file is {}", pid);
-        if (pid != null) {
-            final boolean procRunning = isProcessRunning(pid, logger);
-            if (procRunning) {
-                return port;
-            } else {
-                return null;
-            }
-        }
-
-        return null;
+//        final String pid = props.getProperty(PID_KEY);
+//        logger.debug("PID in status file is {}", pid);
+//        if (pid != null) {
+//            final boolean procRunning = isProcessRunning(pid, logger);
+//            if (procRunning) {
+//                return port;
+//            } else {
+//                return null;
+//            }
+//        }
+//
+//        return null;
     }
 
     private boolean isProcessRunning(final String pid, final Logger logger) {
@@ -729,12 +733,12 @@ public class RunNiFi {
      */
     public void diagnostics(final File dumpFile, final boolean verbose, final boolean isBundle) throws IOException {
         if (isBundle) {
-            makeBundleRequest(verbose);
+            makeBundleRequest();
         }
-
-        String args = verbose ? "--verbose=true" : null;
-
-        makeRequest(DIAGNOSTICS_CMD, args, dumpFile, "diagnostics information");
+//
+//        String args = verbose ? "--verbose=true" : null;
+//
+//        makeRequest(DIAGNOSTICS_CMD, args, dumpFile, "diagnostics information");
     }
 
     /**
@@ -767,7 +771,7 @@ public class RunNiFi {
         }
     }
 
-    private void makeBundleRequest(final boolean verbose) throws IOException {
+    private void makeBundleRequest() throws IOException {
         final Logger logger = defaultLogger;    // dump to bootstrap log file by default
         final Integer port = getCurrentPort(logger);
         if (port == null) {
@@ -777,6 +781,12 @@ public class RunNiFi {
 
         // Create JSON
         ObjectMapper mapper = new ObjectMapper();
+        DefaultPrettyPrinter p = new DefaultPrettyPrinter();
+        DefaultPrettyPrinter.Indenter i = new DefaultIndenter(" ", "");
+        p.indentArraysWith(i);
+        p.indentObjectsWith(i);
+
+        mapper.setDefaultPrettyPrinter(p);
 
         // create a JSON object
         ObjectNode user = mapper.createObjectNode();
@@ -805,11 +815,15 @@ public class RunNiFi {
                     socket.getOutputStream(), StandardCharsets.UTF_8)) {
                 out.write("BUNDLE" + " " + secretKey + " " + json + "\n");
             }
-
-
-
             socketOut.flush();
+
+            final InputStream in = socket.getInputStream();
+            try (final BufferedReader reader = new BufferedReader(new InputStreamReader(in))) {
+                String line = reader.readLine();
+                final JsonNode jsonNode = mapper.readTree(line);
+                String tmpDirPath = jsonNode.get("path").asText();
             }
+        }
     }
 
     private void makeRequest(final String request, final String arguments, final File dumpFile, final String contentsDescription) throws IOException {
@@ -1281,7 +1295,7 @@ public class RunNiFi {
 
         final StringBuilder cmdBuilder = new StringBuilder();
         for (final String s : cmd) {
-          cmdBuilder.append(s).append(" ");
+            cmdBuilder.append(s).append(" ");
         }
 
         cmdLogger.info("Starting Apache NiFi...");
@@ -1402,14 +1416,14 @@ public class RunNiFi {
                             // We are expected to restart nifi, so send a notification that it died. If we are not restarting nifi,
                             // then this means that we are intentionally stopping the service.
                             serviceManager.notify(NotificationType.NIFI_DIED, "NiFi Died on Host " + hostname,
-                                "Hello,\n\nIt appears that Apache NiFi has died on host " + hostname + " at " + now + "; automatically restarting NiFi");
+                                    "Hello,\n\nIt appears that Apache NiFi has died on host " + hostname + " at " + now + "; automatically restarting NiFi");
                         } else {
                             defaultLogger.error("Apache NiFi does not appear to have started");
                             // We are expected to restart nifi, so send a notification that it died. If we are not restarting nifi,
                             // then this means that we are intentionally stopping the service.
                             serviceManager.notify(NotificationType.NIFI_DIED, "NiFi Died on Host " + hostname,
-                                "Hello,\n\nIt appears that Apache NiFi has died on host " + hostname + " at " + now +
-                                    ". Attempted to restart NiFi but the services does not appear to have restarted!");
+                                    "Hello,\n\nIt appears that Apache NiFi has died on host " + hostname + " at " + now +
+                                            ". Attempted to restart NiFi but the services does not appear to have restarted!");
                         }
                     } else {
                         return;
@@ -1426,7 +1440,7 @@ public class RunNiFi {
     }
 
     private Path createSensitiveKeyFile(File confDir) {
-        Path sensitiveKeyFile = Paths.get(confDir+"/sensitive.key");
+        Path sensitiveKeyFile = Paths.get(confDir + "/sensitive.key");
 
         final boolean isPosixSupported = FileSystems.getDefault().supportedFileAttributeViews().contains("posix");
         try {

@@ -16,6 +16,11 @@
  */
 package org.apache.nifi.bootstrap.util;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.util.DefaultIndenter;
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +31,32 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 public class OSUtilsTest {
+
+    @Test
+    public void asd() throws JsonProcessingException {
+        // Create JSON
+        ObjectMapper mapper = new ObjectMapper();
+        DefaultPrettyPrinter p = new DefaultPrettyPrinter();
+        DefaultPrettyPrinter.Indenter i = new DefaultIndenter(" ", "");
+        p.indentArraysWith(i);
+        p.indentObjectsWith(i);
+
+        mapper.setDefaultPrettyPrinter(p);
+
+        // create a JSON object
+        ObjectNode user = mapper.createObjectNode();
+        user.put("id", 1);
+        user.put("name", "John Doe");
+        user.put("email", "john.doe@example.com");
+        user.put("salary", 3545.99);
+        user.put("role", "QA Engineer");
+        user.put("admin", false);
+
+        // convert `ObjectNode` to pretty-print JSON
+        // without pretty-print, use `user.toString()` method
+        String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(user);
+        System.out.println(json);
+    }
 
     @Test
     public void testGetPid() throws IOException {

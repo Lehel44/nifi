@@ -24,6 +24,8 @@
             <fileMode>0664</fileMode>
             <useTransitiveFiltering>true</useTransitiveFiltering>
             <includes>
+                <include>jackson-core</include>
+                <include>jackson-databind</include>
                 <include>nifi-bootstrap-utils</include>
                 <include>nifi-bootstrap</include>
                 <include>slf4j-api</include>
