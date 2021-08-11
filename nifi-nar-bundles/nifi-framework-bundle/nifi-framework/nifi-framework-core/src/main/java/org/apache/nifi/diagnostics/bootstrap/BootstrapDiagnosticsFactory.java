@@ -87,6 +87,10 @@ public class BootstrapDiagnosticsFactory implements DiagnosticsFactory {
         return tasks;
     }
 
+    public FlowController getFlowController() {
+        return flowController;
+    }
+
     public void setFlowController(final FlowController flowController) {
         this.flowController = flowController;
     }
