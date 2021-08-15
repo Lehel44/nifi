@@ -25,6 +25,7 @@ import org.apache.nifi.diagnostics.DiagnosticsDump;
 import org.apache.nifi.diagnostics.bootstrap.BootstrapDiagnosticsFactory;
 import org.apache.nifi.groups.ProcessGroup;
 import org.apache.nifi.nar.ExtensionManager;
+import org.apache.nifi.nar.StandardExtensionDiscoveringManager;
 import org.apache.nifi.registry.flow.mapping.InstantiatedVersionedProcessGroup;
 import org.apache.nifi.registry.flow.mapping.NiFiRegistryFlowMapper;
 import org.apache.nifi.util.LimitingInputStream;

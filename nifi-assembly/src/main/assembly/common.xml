@@ -32,6 +32,8 @@
                 <include>logback-classic</include>
                 <include>nifi-api</include>
                 <include>nifi-framework-core</include>
+                <include>nifi-framework-commons</include>
+                <include>nifi-framework-nar-utils</include>
             </includes>
         </dependencySet>
 
