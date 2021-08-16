@@ -22,6 +22,7 @@ import org.apache.nifi.diagnostics.DiagnosticsDump;
 import org.apache.nifi.diagnostics.DiagnosticsDumpElement;
 import org.apache.nifi.diagnostics.DiagnosticsFactory;
 import org.apache.nifi.diagnostics.StandardDiagnosticsDump;
+import org.apache.nifi.diagnostics.ThreadDumpTask;
 import org.apache.nifi.diagnostics.bootstrap.tasks.ClusterDiagnosticTask;
 import org.apache.nifi.diagnostics.bootstrap.tasks.ComponentCountTask;
 import org.apache.nifi.diagnostics.bootstrap.tasks.ContentRepositoryScanTask;
@@ -36,7 +37,6 @@ import org.apache.nifi.diagnostics.bootstrap.tasks.NarsDiagnosticTask;
 import org.apache.nifi.diagnostics.bootstrap.tasks.NiFiPropertiesDiagnosticTask;
 import org.apache.nifi.diagnostics.bootstrap.tasks.OperatingSystemDiagnosticTask;
 import org.apache.nifi.diagnostics.bootstrap.tasks.RepositoryDiagnosticTask;
-import org.apache.nifi.diagnostics.ThreadDumpTask;
 import org.apache.nifi.util.NiFiProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,6 +65,11 @@ public class BootstrapDiagnosticsFactory implements DiagnosticsFactory {
         }
 
         return new StandardDiagnosticsDump(dumpElements, System.currentTimeMillis());
+    }
+
+    @Override
+    public void createVersionedProcessGroup() {
+        
     }
 
     public List<DiagnosticTask> getDiagnosticTasks() {

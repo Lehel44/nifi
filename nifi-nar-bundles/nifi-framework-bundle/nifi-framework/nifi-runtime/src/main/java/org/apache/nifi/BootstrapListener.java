@@ -20,20 +20,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nifi.controller.DecommissionTask;
-import org.apache.nifi.controller.service.ControllerServiceProvider;
 import org.apache.nifi.diagnostics.DiagnosticsDump;
-import org.apache.nifi.diagnostics.bootstrap.BootstrapDiagnosticsFactory;
-import org.apache.nifi.groups.ProcessGroup;
-import org.apache.nifi.nar.ExtensionManager;
-import org.apache.nifi.nar.StandardExtensionDiscoveringManager;
-import org.apache.nifi.registry.flow.mapping.InstantiatedVersionedProcessGroup;
-import org.apache.nifi.registry.flow.mapping.NiFiRegistryFlowMapper;
 import org.apache.nifi.util.LimitingInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -246,16 +238,9 @@ public class BootstrapListener {
 
                                         System.out.println(logPath);
 
-                                        final BootstrapDiagnosticsFactory diagnosticsFactory = (BootstrapDiagnosticsFactory) nifi.getServer().getDiagnosticsFactory();
-                                        final ExtensionManager extensionManager = diagnosticsFactory.getFlowController().getExtensionManager();
-                                        NiFiRegistryFlowMapper flowMapper = new NiFiRegistryFlowMapper(extensionManager);
-                                        final ProcessGroup rootProcessGroup = diagnosticsFactory.getFlowController().getFlowManager().getRootGroup();
-                                        final ControllerServiceProvider controllerServiceProvider = diagnosticsFactory.getFlowController().getControllerServiceProvider();
-                                        InstantiatedVersionedProcessGroup nonVersionedProcessGroup = flowMapper.mapNonVersionedProcessGroup(
-                                                rootProcessGroup,
-                                                controllerServiceProvider
-                                        );
-                                        mapper.writeValue(new File("VPG.json"), nonVersionedProcessGroup);
+                                        nifi.getServer().getDiagnosticsFactory().createVersionedProcessGroup();
+
+
                                         break;
                                     case DIAGNOSTICS:
                                         logger.info("Received DIAGNOSTICS request from Bootstrap");
