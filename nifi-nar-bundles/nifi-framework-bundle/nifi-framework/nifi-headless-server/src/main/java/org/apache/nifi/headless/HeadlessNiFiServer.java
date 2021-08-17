@@ -34,6 +34,7 @@ import org.apache.nifi.controller.StandardFlowService;
 import org.apache.nifi.controller.flow.FlowManager;
 import org.apache.nifi.controller.repository.FlowFileEventRepository;
 import org.apache.nifi.controller.repository.metrics.RingBufferEventRepository;
+import org.apache.nifi.diagnostics.DataFlowWriter;
 import org.apache.nifi.diagnostics.DiagnosticsDump;
 import org.apache.nifi.diagnostics.DiagnosticsDumpElement;
 import org.apache.nifi.diagnostics.DiagnosticsFactory;
@@ -196,6 +197,11 @@ public class HeadlessNiFiServer implements NiFiServer {
 
     @Override
     public DecommissionTask getDecommissionTask() {
+        return null;
+    }
+
+    @Override
+    public DataFlowWriter getDataFlowWriter() {
         return null;
     }
 

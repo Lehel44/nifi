@@ -1,5 +1,6 @@
 package org.apache.nifi.diagnostics;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.nifi.controller.FlowController;
 import org.apache.nifi.controller.service.ControllerServiceProvider;
@@ -31,7 +32,14 @@ public class BundleDataFlowWriter implements DataFlowWriter {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return "HAHAHA";
+
+        String json = null;
+        try {
+            json = mapper.writeValueAsString(nonVersionedProcessGroup);
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
+        return json;
     }
 
     public void setFlowController(final FlowController flowController) {

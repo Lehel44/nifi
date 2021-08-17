@@ -238,7 +238,7 @@ public class BootstrapListener {
 
                                         System.out.println(logPath);
 
-                                        nifi.getServer().getDiagnosticsFactory().createVersionedProcessGroup();
+                                        final String versionedProcessGroup = nifi.getServer().getDataFlowWriter().createVersionedProcessGroup();
 
 
                                         break;
