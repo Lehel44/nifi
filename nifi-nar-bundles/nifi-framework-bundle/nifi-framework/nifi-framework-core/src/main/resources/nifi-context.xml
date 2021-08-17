@@ -74,6 +74,11 @@
         <property name="nifiProperties" ref="nifiProperties" />
     </bean>
 
+    <bean id="dataFlowWriter" class="org.apache.nifi.diagnostics.BundleDataFlowWriter">
+        <property name="flowController" ref="flowController" />
+        <property name="extensionManager" ref="extensionManager" />
+    </bean>
+
     <bean id="eventReporter" class="org.apache.nifi.events.StandardEventReporter">
         <constructor-arg ref="bulletinRepository" />
     </bean>
