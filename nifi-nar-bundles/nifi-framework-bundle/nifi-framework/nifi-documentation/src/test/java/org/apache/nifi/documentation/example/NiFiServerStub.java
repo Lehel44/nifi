@@ -62,8 +62,4 @@ public class NiFiServerStub implements NiFiServer {
         return null;
     }
 
-    @Override
-    public DataFlowWriter getDataFlowWriter() {
-        return null;
-    }
 }

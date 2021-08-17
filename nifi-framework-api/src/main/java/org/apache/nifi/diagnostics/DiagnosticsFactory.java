@@ -18,8 +18,4 @@ package org.apache.nifi.diagnostics;
 
 public interface DiagnosticsFactory {
     DiagnosticsDump create(boolean verbose);
-
-    default void createVersionedProcessGroup() {
-        create(false);
-    }
 }

@@ -200,11 +200,6 @@ public class HeadlessNiFiServer implements NiFiServer {
         return null;
     }
 
-    @Override
-    public DataFlowWriter getDataFlowWriter() {
-        return null;
-    }
-
     public void stop() {
         try {
             flowService.stop(false);

@@ -27,6 +27,7 @@ import org.apache.nifi.controller.DecommissionTask;
 import org.apache.nifi.controller.UninheritableFlowException;
 import org.apache.nifi.controller.serialization.FlowSerializationException;
 import org.apache.nifi.controller.serialization.FlowSynchronizationException;
+import org.apache.nifi.controller.status.history.StatusHistoryRepository;
 import org.apache.nifi.diagnostics.BundleDataFlowWriter;
 import org.apache.nifi.diagnostics.DataFlowWriter;
 import org.apache.nifi.diagnostics.DiagnosticsDump;
@@ -168,6 +169,7 @@ public class JettyServer implements NiFiServer, ExtensionUiLoader {
     private SslContextFactory.Server sslContextFactory;
     private DecommissionTask decommissionTask;
     private DataFlowWriter dataFlowWriter;
+    private StatusHistoryRepository statusHistoryRepository;
 
     private WebAppContext webApiContext;
     private WebAppContext webDocsContext;
@@ -1189,6 +1191,7 @@ public class JettyServer implements NiFiServer, ExtensionUiLoader {
                 diagnosticsFactory = webApplicationContext.getBean("diagnosticsFactory", DiagnosticsFactory.class);
                 decommissionTask = webApplicationContext.getBean("decommissionTask", DecommissionTask.class);
                 dataFlowWriter = webApplicationContext.getBean("dataFlowWriter", DataFlowWriter.class);
+                statusHistoryRepository = webApplicationContext.getBean("statusHistoryRepository", StatusHistoryRepository.class);
             }
 
             // ensure the web document war was loaded and provide the extension mapping
@@ -1270,6 +1273,11 @@ public class JettyServer implements NiFiServer, ExtensionUiLoader {
     @Override
     public DataFlowWriter getDataFlowWriter() {
         return dataFlowWriter;
+    }
+
+    @Override
+    public StatusHistoryRepository getStatusHistoryRepository() {
+        return statusHistoryRepository;
     }
 
     private void performInjectionForComponentUis(final Collection<WebAppContext> componentUiExtensionWebContexts,

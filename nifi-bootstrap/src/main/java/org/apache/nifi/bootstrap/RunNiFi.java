@@ -57,7 +57,6 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -127,6 +126,7 @@ public class RunNiFi {
     public static final String IS_LOADED_CMD = "IS_LOADED";
 
     private static final int UNINITIALIZED_CC_PORT = -1;
+    private static final String LOCALHOST = "localhost";
 
     private volatile boolean autoRestartNiFi = true;
     private volatile int ccPort = UNINITIALIZED_CC_PORT;
@@ -186,11 +186,25 @@ public class RunNiFi {
         System.out.println();
     }
 
-    private static String[] shift(final String[] orig) {
-        return Arrays.copyOfRange(orig, 1, orig.length);
+    private enum DiagnosticArguments {
+        BUNDLE("--bundle"), VERBOSE("--verbose"), TIME("--time");
+        String command;
+
+        DiagnosticArguments(final String command) {
+            this.command = command;
+        }
+
+        String getCommand() {
+            return command;
+        }
     }
 
-    public static void main(String[] args) throws IOException, InterruptedException {
+    private enum NifiArguments {
+        START, RUN, STOP, DECOMISSION, STATUS,
+        IS_LOADED, DUMP, DIAGNOSTICS, RESTART, ENV;
+    }
+
+    public static void main(String[] args) throws IOException {
         if (args.length < 1 || args.length > 4) {
             printUsage();
             return;
@@ -199,53 +213,45 @@ public class RunNiFi {
         File dumpFile = null;
         boolean verbose = false;
         boolean bundle = false;
+        String time = null;
+        String timeUnit = null;
+        final String lastArg = args[args.length - 1];
 
         final String cmd = args[0];
-        if (cmd.equalsIgnoreCase("dump")) {
+        if (cmd.equalsIgnoreCase(NifiArguments.DUMP.name())) {
             if (args.length > 1) {
                 dumpFile = new File(args[1]);
             }
-        } else if (cmd.equalsIgnoreCase("diagnostics")) {
-            if (args.length > 3) {
-                if ("--verbose".equals(args[1]) || "--verbose".equals(args[2])) {
+        } else if (cmd.equalsIgnoreCase(NifiArguments.DIAGNOSTICS.name())) {
+            for (int i = 0; i < args.length; i++) {
+                final String current = args[i];
+                if (DiagnosticArguments.VERBOSE.getCommand().equals(current)) {
                     verbose = true;
                 }
-                if ("--bundle".equals(args[1]) || "--bundle".equals(args[2])) {
+                if (DiagnosticArguments.BUNDLE.getCommand().equals(current)) {
                     bundle = true;
                 }
-                dumpFile = new File(args[3]);
+                if (DiagnosticArguments.TIME.getCommand().equals(current)) {
+                    time = args[i + 1];
+                    timeUnit = args[i + 2];
+                }
             }
-            if (args.length > 2) {
-                if ("--verbose".equals(args[1])) {
-                    verbose = true;
-                } else if ("--bundle".equals(args[1])) {
-                    bundle = true;
-                }
-                dumpFile = new File(args[2]);
-            } else if (args.length > 1) {
-                if (args[1].equalsIgnoreCase("--verbose")) {
-                    verbose = true;
-                    dumpFile = null;
-                } else if (args[1].equalsIgnoreCase("--bundle")) {
-                    bundle = true;
-                    dumpFile = null;
-                } else {
-                    dumpFile = new File(args[1]);
-                }
+            if (!DiagnosticArguments.VERBOSE.getCommand().equals(lastArg) && !DiagnosticArguments.BUNDLE.getCommand().equals(lastArg)) {
+                dumpFile = new File(lastArg);
             }
         }
 
-        switch (cmd.toLowerCase()) {
-            case "start":
-            case "run":
-            case "stop":
-            case "decommission":
-            case "status":
-            case "is_loaded":
-            case "dump":
-            case "diagnostics":
-            case "restart":
-            case "env":
+        switch (NifiArguments.valueOf(cmd.toUpperCase())) {
+            case START:
+            case RUN:
+            case STOP:
+            case DECOMISSION:
+            case STATUS:
+            case IS_LOADED:
+            case DUMP:
+            case DIAGNOSTICS:
+            case RESTART:
+            case ENV:
                 break;
             default:
                 printUsage();
@@ -256,40 +262,40 @@ public class RunNiFi {
         final RunNiFi runNiFi = new RunNiFi(configFile);
 
         Integer exitStatus = null;
-        switch (cmd.toLowerCase()) {
-            case "start":
+        switch (NifiArguments.valueOf(cmd.toLowerCase())) {
+            case START:
                 runNiFi.start(true);
                 break;
-            case "run":
+            case RUN:
                 runNiFi.start(true);
                 break;
-            case "stop":
+            case STOP:
                 runNiFi.stop();
                 break;
-            case "decommission":
+            case DECOMISSION:
                 exitStatus = runNiFi.decommission();
                 break;
-            case "status":
+            case STATUS:
                 exitStatus = runNiFi.status();
                 break;
-            case "is_loaded":
+            case IS_LOADED:
                 try {
                     System.out.println(runNiFi.isNiFiFullyLoaded());
                 } catch (NiFiNotRunningException e) {
                     System.out.println("not_running");
                 }
                 break;
-            case "restart":
+            case RESTART:
                 runNiFi.stop();
                 runNiFi.start(true);
                 break;
-            case "dump":
+            case DUMP:
                 runNiFi.dump(dumpFile);
                 break;
-            case "diagnostics":
-                runNiFi.diagnostics(dumpFile, verbose, bundle);
+            case DIAGNOSTICS:
+                runNiFi.diagnostics(dumpFile, verbose, bundle, time, timeUnit);
                 break;
-            case "env":
+            case ENV:
                 runNiFi.env();
                 break;
         }
@@ -314,8 +320,7 @@ public class RunNiFi {
             configFilename = DEFAULT_CONFIG_FILE;
         }
 
-        final File configFile = new File(configFilename);
-        return configFile;
+        return new File(configFilename);
     }
 
     private NotificationServiceManager loadServices() throws IOException {
@@ -523,7 +528,7 @@ public class RunNiFi {
     private boolean isPingSuccessful(final int port, final String secretKey, final Logger logger) {
         logger.debug("Pinging {}", port);
 
-        try (final Socket socket = new Socket("localhost", port)) {
+        try (final Socket socket = new Socket(LOCALHOST, port)) {
             final OutputStream out = socket.getOutputStream();
             out.write((PING_CMD + " " + secretKey + "\n").getBytes(StandardCharsets.UTF_8));
             out.flush();
@@ -731,14 +736,13 @@ public class RunNiFi {
     /**
      * Writes NiFi diagnostic information to the given file; if the file is null, logs at INFO level instead.
      */
-    public void diagnostics(final File dumpFile, final boolean verbose, final boolean isBundle) throws IOException {
+    public void diagnostics(final File dumpFile, final boolean verbose, final boolean isBundle, final String time, final String timeUnit) throws IOException {
         if (isBundle) {
-            makeBundleRequest();
+            makeBundleRequest(verbose, time, timeUnit);
+        } else {
+            String args = verbose ? "--verbose=true" : null;
+            makeRequest(DIAGNOSTICS_CMD, args, dumpFile, "diagnostics information");
         }
-//
-//        String args = verbose ? "--verbose=true" : null;
-//
-//        makeRequest(DIAGNOSTICS_CMD, args, dumpFile, "diagnostics information");
     }
 
     /**
@@ -771,7 +775,7 @@ public class RunNiFi {
         }
     }
 
-    private void makeBundleRequest() throws IOException {
+    private void makeBundleRequest(final boolean verbose, final String time, final String timeUnit) throws IOException {
         final Logger logger = defaultLogger;    // dump to bootstrap log file by default
         final Integer port = getCurrentPort(logger);
         if (port == null) {
@@ -780,30 +784,24 @@ public class RunNiFi {
         }
 
         // Create JSON
-        ObjectMapper mapper = new ObjectMapper();
-        DefaultPrettyPrinter p = new DefaultPrettyPrinter();
-        DefaultPrettyPrinter.Indenter i = new DefaultIndenter(" ", "");
+        final ObjectMapper mapper = new ObjectMapper();
+        final DefaultPrettyPrinter p = new DefaultPrettyPrinter();
+        final DefaultPrettyPrinter.Indenter i = new DefaultIndenter(" ", "");
         p.indentArraysWith(i);
         p.indentObjectsWith(i);
 
         mapper.setDefaultPrettyPrinter(p);
 
         // create a JSON object
-        ObjectNode user = mapper.createObjectNode();
-        user.put("id", 1);
-        user.put("name", "John Doe");
-        user.put("email", "john.doe@example.com");
-        user.put("salary", 3545.99);
-        user.put("role", "QA Engineer");
-        user.put("admin", false);
-
-        // convert `ObjectNode` to pretty-print JSON
-        // without pretty-print, use `user.toString()` method
-        String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(user);
+        final ObjectNode request = mapper.createObjectNode();
+        request.put("verbose", verbose);
+        request.put("time", time);
+        request.put("timeUnit", timeUnit);
+        final String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(request);
 
         try (final Socket socket = new Socket()) {
             socket.setSoTimeout(60000);
-            socket.connect(new InetSocketAddress("localhost", port));
+            socket.connect(new InetSocketAddress(LOCALHOST, port));
             socket.setSoTimeout(60000);
 
             final Properties nifiProps = loadProperties(logger);
@@ -819,9 +817,9 @@ public class RunNiFi {
 
             final InputStream in = socket.getInputStream();
             try (final BufferedReader reader = new BufferedReader(new InputStreamReader(in))) {
-                String line = reader.readLine();
+                final String line = reader.readLine();
                 final JsonNode jsonNode = mapper.readTree(line);
-                String tmpDirPath = jsonNode.get("path").asText();
+                final String tmpDirPath = jsonNode.get("path").asText();
             }
         }
     }
@@ -863,7 +861,7 @@ public class RunNiFi {
     private void sendRequest(Socket socket, Integer port, String request, String arguments, Logger logger) throws IOException {
         logger.debug("Connecting to NiFi instance");
         socket.setSoTimeout(60000);
-        socket.connect(new InetSocketAddress("localhost", port));
+        socket.connect(new InetSocketAddress(LOCALHOST, port));
         logger.debug("Established connection to NiFi instance.");
         socket.setSoTimeout(60000);
 
@@ -918,7 +916,7 @@ public class RunNiFi {
         try (final Socket socket = new Socket()) {
             logger.debug("Connecting to NiFi instance");
             socket.setSoTimeout(10000);
-            socket.connect(new InetSocketAddress("localhost", port));
+            socket.connect(new InetSocketAddress(LOCALHOST, port));
             logger.debug("Established connection to NiFi instance.");
 
             // We don't know how long it will take for the offloading to complete. It could be a while. So don't timeout.
@@ -975,7 +973,7 @@ public class RunNiFi {
         try (final Socket socket = new Socket()) {
             logger.debug("Connecting to NiFi instance");
             socket.setSoTimeout(10000);
-            socket.connect(new InetSocketAddress("localhost", port));
+            socket.connect(new InetSocketAddress(LOCALHOST, port));
             logger.debug("Established connection to NiFi instance.");
             socket.setSoTimeout(10000);
 

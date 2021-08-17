@@ -20,23 +20,32 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nifi.controller.DecommissionTask;
+import org.apache.nifi.controller.status.history.StatusHistory;
+import org.apache.nifi.controller.status.history.StatusHistoryRepository;
 import org.apache.nifi.diagnostics.DiagnosticsDump;
 import org.apache.nifi.util.LimitingInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -227,40 +236,35 @@ public class BootstrapListener {
                                         break;
                                     case BUNDLE:
                                         logger.info("Received BUNDLE request from Bootstrap");
-                                        String logPath = System.getProperty("org.apache.nifi.bootstrap.config.log.dir");
                                         final String json = String.join("", request.getArgs());
-                                        ObjectMapper mapper = new ObjectMapper();
+                                        final ObjectMapper mapper = new ObjectMapper();
                                         final JsonNode jsonNode = mapper.readTree(json);
-                                        String tmpdir = Files.createTempDirectory("tmpDirPrefix").toFile().getAbsolutePath();
+                                        String tempdir = Files.createTempDirectory("nifi-bundle-tempdir").toFile().getAbsolutePath();
+                                        writeLogFilesToTempDirectory(tempdir);
+                                        serializeVersionedProcessGroupToTempDirectory(tempdir);
+                                        serializeNodeHistoryToTempDirectory(tempdir, mapper);
                                         ObjectNode objectNode = mapper.createObjectNode();
                                         objectNode.put("status", "ok");
-                                        objectNode.put("path", tmpdir);
-
-                                        System.out.println(logPath);
-
-                                        final String versionedProcessGroup = nifi.getServer().getDataFlowWriter().createVersionedProcessGroup();
-
-
+                                        objectNode.put("path", tempdir);
+                                        final String response = mapper.writeValueAsString(objectNode);
+                                        sendAnswer(socket.getOutputStream(), response);
                                         break;
                                     case DIAGNOSTICS:
                                         logger.info("Received DIAGNOSTICS request from Bootstrap");
                                         final String[] args = request.getArgs();
                                         boolean verbose = false;
-                                        boolean bundle = false;
                                         if (args == null) {
                                             verbose = false;
                                         } else {
                                             for (final String arg : args) {
                                                 if ("--verbose=true".equalsIgnoreCase(arg)) {
                                                     verbose = true;
-                                                }
-                                                if ("--bundle=true".equalsIgnoreCase(arg)) {
-                                                    bundle = true;
+                                                    break;
                                                 }
                                             }
                                         }
 
-                                        writeDiagnostics(socket.getOutputStream(), verbose, bundle);
+                                        writeDiagnostics(socket.getOutputStream(), verbose);
                                         break;
                                     case IS_LOADED:
                                         logger.debug("Received IS_LOADED request from Bootstrap");
@@ -285,6 +289,39 @@ public class BootstrapListener {
                 }
             }
         }
+
+
+        private void writeDiagnostics(final OutputStream out, final boolean verbose) throws IOException {
+            final DiagnosticsDump diagnosticsDump = nifi.getServer().getDiagnosticsFactory().create(verbose);
+            diagnosticsDump.writeTo(out);
+        }
+
+        private void sendAnswer(final OutputStream out, final String answer) throws IOException {
+            out.write((answer + "\n").getBytes(StandardCharsets.UTF_8));
+            out.flush();
+        }
+
+        private void writeLogFilesToTempDirectory(final String tempDir) throws IOException {
+            final String logDirectoryPath = System.getProperty("org.apache.nifi.bootstrap.config.log.dir");
+            Files.copy(Paths.get(logDirectoryPath), Paths.get(tempDir), StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        private void serializeVersionedProcessGroupToTempDirectory(final String tempDir) {
+            final String versionedProcessGroup = nifi.getServer().getDataFlowWriter().createVersionedProcessGroup();
+            final File file = new File(tempDir, "versionedProcessGroup.json");
+            try (final PrintWriter printWriter = new PrintWriter(file)) {
+                printWriter.println(versionedProcessGroup);
+            } catch (FileNotFoundException e) {
+                logger.error("File not found, cannot write versioned process group", e);
+            }
+
+        }
+
+        private void serializeNodeHistoryToTempDirectory(final String tempDir, final ObjectMapper objectMapper) throws IOException {
+            final StatusHistoryRepository statusHistoryRepository = nifi.getServer().getStatusHistoryRepository();
+            final StatusHistory nodeStatusHistory = statusHistoryRepository.getNodeStatusHistory(new Date(2021, Calendar.AUGUST, 17), new Date(2021, Calendar.AUGUST, 18));
+            objectMapper.writeValue(new File(tempDir + "/nodeStatusHistory.json"), nodeStatusHistory);
+        }
     }
 
     private void writeDump(final OutputStream out) throws IOException {
@@ -299,16 +336,6 @@ public class BootstrapListener {
         }
 
         decommissionTask.decommission();
-    }
-
-    private void writeDiagnostics(final OutputStream out, final boolean verbose, final boolean bundle) throws IOException {
-        final DiagnosticsDump diagnosticsDump = nifi.getServer().getDiagnosticsFactory().create(verbose);
-        diagnosticsDump.writeTo(out);
-    }
-
-    private void sendAnswer(final OutputStream out, final String answer) throws IOException {
-        out.write((answer + "\n").getBytes(StandardCharsets.UTF_8));
-        out.flush();
     }
 
     @SuppressWarnings("resource")  // we don't want to close the stream, as the caller will do that

@@ -67,11 +67,6 @@ public class BootstrapDiagnosticsFactory implements DiagnosticsFactory {
         return new StandardDiagnosticsDump(dumpElements, System.currentTimeMillis());
     }
 
-    @Override
-    public void createVersionedProcessGroup() {
-        
-    }
-
     public List<DiagnosticTask> getDiagnosticTasks() {
         final List<DiagnosticTask> tasks = new ArrayList<>();
         tasks.add(new DiagnosticAnalysisTask(flowController));

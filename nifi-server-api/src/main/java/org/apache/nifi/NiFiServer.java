@@ -18,6 +18,7 @@ package org.apache.nifi;
 
 import org.apache.nifi.bundle.Bundle;
 import org.apache.nifi.controller.DecommissionTask;
+import org.apache.nifi.controller.status.history.StatusHistoryRepository;
 import org.apache.nifi.diagnostics.DataFlowWriter;
 import org.apache.nifi.diagnostics.DiagnosticsFactory;
 import org.apache.nifi.nar.ExtensionMapping;
@@ -42,5 +43,11 @@ public interface NiFiServer {
 
     DecommissionTask getDecommissionTask();
 
-    DataFlowWriter getDataFlowWriter();
+    default DataFlowWriter getDataFlowWriter() {
+        return null;
+    }
+
+    default StatusHistoryRepository getStatusHistoryRepository() {
+        return null;
+    }
 }
