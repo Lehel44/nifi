@@ -17,6 +17,7 @@
 package org.apache.nifi;
 
 import org.apache.nifi.controller.DecommissionTask;
+import org.apache.nifi.controller.status.history.StatusHistory;
 import org.apache.nifi.diagnostics.DiagnosticsDump;
 import org.apache.nifi.util.LimitingInputStream;
 import org.slf4j.Logger;
@@ -33,6 +34,8 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -244,6 +247,14 @@ public class BootstrapListener {
                                         sendAnswer(socket.getOutputStream(), answer);
                                         logger.debug("Responded to IS_LOADED request from Bootstrap with value: " + answer);
                                         break;
+                                    case STATUS_HISTORY:
+                                        logger.info("Received STATUS_HISTORY request from Bootstrap");
+                                        final String[] statusHistoryArgs = request.getArgs();
+                                        final int days = Integer.parseInt(statusHistoryArgs[0]);
+
+                                        writeStatusHistory(socket.getOutputStream(), days);
+                                        break;
+
                                 }
                             } catch (final Throwable t) {
                                 logger.error("Failed to process request from Bootstrap due to " + t.toString(), t);
@@ -280,6 +291,15 @@ public class BootstrapListener {
     private void writeDiagnostics(final OutputStream out, final boolean verbose) throws IOException {
         final DiagnosticsDump diagnosticsDump = nifi.getServer().getDiagnosticsFactory().create(verbose);
         diagnosticsDump.writeTo(out);
+    }
+
+    private void writeStatusHistory(final OutputStream out, final int days) throws IOException {
+        final Date now = new Date();
+        final Calendar calendar = Calendar.getInstance();
+        calendar.setTime(now);
+        calendar.add(Calendar.DATE, days);
+        final Date daysBefore = calendar.getTime();
+        final StatusHistory statusHistoryDump = nifi.getServer().getStatusHistoryRepository().getNodeStatusHistory(daysBefore, now);
     }
 
     private void sendAnswer(final OutputStream out, final String answer) throws IOException {
@@ -333,7 +353,8 @@ public class BootstrapListener {
             DIAGNOSTICS,
             DECOMMISSION,
             PING,
-            IS_LOADED
+            IS_LOADED,
+            STATUS_HISTORY
         }
 
         private final RequestType requestType;

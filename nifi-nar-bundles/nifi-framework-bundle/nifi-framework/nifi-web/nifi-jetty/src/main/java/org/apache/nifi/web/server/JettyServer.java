@@ -27,6 +27,7 @@ import org.apache.nifi.controller.DecommissionTask;
 import org.apache.nifi.controller.UninheritableFlowException;
 import org.apache.nifi.controller.serialization.FlowSerializationException;
 import org.apache.nifi.controller.serialization.FlowSynchronizationException;
+import org.apache.nifi.controller.status.history.StatusHistoryRepository;
 import org.apache.nifi.diagnostics.DiagnosticsDump;
 import org.apache.nifi.diagnostics.DiagnosticsDumpElement;
 import org.apache.nifi.diagnostics.DiagnosticsFactory;
@@ -165,6 +166,7 @@ public class JettyServer implements NiFiServer, ExtensionUiLoader {
     private DiagnosticsFactory diagnosticsFactory;
     private SslContextFactory.Server sslContextFactory;
     private DecommissionTask decommissionTask;
+    private StatusHistoryRepository statusHistoryRepository;
 
     private WebAppContext webApiContext;
     private WebAppContext webDocsContext;
@@ -1185,6 +1187,7 @@ public class JettyServer implements NiFiServer, ExtensionUiLoader {
 
                 diagnosticsFactory = webApplicationContext.getBean("diagnosticsFactory", DiagnosticsFactory.class);
                 decommissionTask = webApplicationContext.getBean("decommissionTask", DecommissionTask.class);
+                statusHistoryRepository = webApplicationContext.getBean("statusHistoryRepository", StatusHistoryRepository.class);
             }
 
             // ensure the web document war was loaded and provide the extension mapping
@@ -1262,6 +1265,12 @@ public class JettyServer implements NiFiServer, ExtensionUiLoader {
     public DecommissionTask getDecommissionTask() {
         return decommissionTask;
     }
+
+    @Override
+    public StatusHistoryRepository getStatusHistoryRepository() {
+        return statusHistoryRepository;
+    }
+
 
     private void performInjectionForComponentUis(final Collection<WebAppContext> componentUiExtensionWebContexts,
                                                  final NiFiWebConfigurationContext configurationContext, final FilterHolder securityFilter) {

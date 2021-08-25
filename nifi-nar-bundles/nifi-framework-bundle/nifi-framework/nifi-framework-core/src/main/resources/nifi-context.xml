@@ -77,4 +77,8 @@
     <bean id="eventReporter" class="org.apache.nifi.events.StandardEventReporter">
         <constructor-arg ref="bulletinRepository" />
     </bean>
+
+    <bean id="statusHistoryRepository" class="org.apache.nifi.controller.status.history.VolatileComponentStatusRepository">
+        <constructor-arg ref="nifiProperties" />
+    </bean>
 </beans>

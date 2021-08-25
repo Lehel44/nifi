@@ -119,8 +119,10 @@ public class RunNiFi {
     public static final String DUMP_CMD = "DUMP";
     public static final String DIAGNOSTICS_CMD = "DIAGNOSTICS";
     public static final String IS_LOADED_CMD = "IS_LOADED";
+    public static final String STATUS_HISTORY_CMD = "STATUS_HISTORY";
 
     private static final int UNINITIALIZED_CC_PORT = -1;
+    private static final int DEFAULT_STATUS_HISTORY_DAYS = 1;
 
     private volatile boolean autoRestartNiFi = true;
     private volatile int ccPort = UNINITIALIZED_CC_PORT;
@@ -185,13 +187,14 @@ public class RunNiFi {
     }
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        if (args.length < 1 || args.length > 3) {
+        if (args.length < 1 || args.length > 4) {
             printUsage();
             return;
         }
 
         File dumpFile = null;
         boolean verbose = false;
+        String statusHistoryDays = null;
 
         final String cmd = args[0];
         if (cmd.equalsIgnoreCase("dump")) {
@@ -216,6 +219,9 @@ public class RunNiFi {
                 dumpFile = null;
                 verbose = false;
             }
+        } else if (cmd.equalsIgnoreCase("status-history")) {
+            statusHistoryDays = args[2];
+            dumpFile = new File(args[3]);
         }
 
         switch (cmd.toLowerCase()) {
@@ -229,6 +235,7 @@ public class RunNiFi {
             case "diagnostics":
             case "restart":
             case "env":
+            case "status-history":
                 break;
             default:
                 printUsage();
@@ -274,6 +281,9 @@ public class RunNiFi {
                 break;
             case "env":
                 runNiFi.env();
+                break;
+            case "status-history":
+                runNiFi.statusHistory(dumpFile, statusHistoryDays);
                 break;
         }
         if (exitStatus != null) {
@@ -727,6 +737,14 @@ public class RunNiFi {
      */
     public void dump(final File dumpFile) throws IOException {
         makeRequest(DUMP_CMD, null, dumpFile, "thread dump");
+    }
+
+    /**
+     * Writes NiFi status history information to the given file; if file is null, logs at
+     * INFO level instead.
+     */
+    public void statusHistory(final File dumpFile, final String days) throws IOException { ;
+        makeRequest(STATUS_HISTORY_CMD, days, dumpFile, "status history information");
     }
 
     private boolean isNiFiFullyLoaded() throws IOException, NiFiNotRunningException {
