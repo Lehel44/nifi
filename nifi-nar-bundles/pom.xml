@@ -24,6 +24,7 @@
     <artifactId>nifi-nar-bundles</artifactId>
     <packaging>pom</packaging>
     <modules>
+        <module>nifi-salesforce-bundle</module>
         <module>nifi-framework-bundle</module>
         <module>nifi-hadoop-bundle</module>
         <module>nifi-hadoop-libraries-bundle</module>

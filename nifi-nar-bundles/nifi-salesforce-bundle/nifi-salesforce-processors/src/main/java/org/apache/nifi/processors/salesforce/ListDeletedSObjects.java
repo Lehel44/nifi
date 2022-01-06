@@ -1,0 +1,67 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.nifi.processors.salesforce;
+
+import org.apache.nifi.annotation.configuration.DefaultSchedule;
+import org.apache.nifi.annotation.documentation.CapabilityDescription;
+import org.apache.nifi.annotation.documentation.Tags;
+import org.apache.nifi.flowfile.FlowFile;
+import org.apache.nifi.processor.ProcessSession;
+import org.apache.nifi.scheduling.SchedulingStrategy;
+
+import javax.json.Json;
+import javax.json.JsonArray;
+import javax.json.JsonObject;
+import javax.json.JsonReader;
+import java.io.StringReader;
+import java.time.Clock;
+
+
+@DefaultSchedule(strategy = SchedulingStrategy.TIMER_DRIVEN, period = "1 day")
+@Tags({"salesforce", "sobject"})
+@CapabilityDescription("TBD")
+public class ListDeletedSObjects extends AbstractListSObjectsProcessor {
+
+    public ListDeletedSObjects() {
+        super();
+    }
+
+    public ListDeletedSObjects(Clock clock) {
+        super(clock);
+    }
+
+    @Override
+    protected String getListType() {
+        return "/deleted";
+    }
+
+    @Override
+    protected String processResult(ProcessSession session, String sObjectName, String objectUrlPath, String result) {
+        try (JsonReader reader = Json.createReader(new StringReader(result))) {
+            JsonObject jsonObject = reader.readObject();
+            JsonArray deletedRecords = jsonObject.getJsonArray("deletedRecords");
+            String latestDateCovered = jsonObject.getString("latestDateCovered");
+            FlowFile flowFile = session.create();
+            session.putAttribute(flowFile, "salesforce.attributes.type", sObjectName);
+            session.putAttribute(flowFile, "salesforce.lastDateCovered", latestDateCovered);
+            session.write(flowFile, out -> out.write(deletedRecords.toString().getBytes()));
+            session.transfer(flowFile, REL_SUCCESS);
+
+            return latestDateCovered;
+        }
+    }
+}
