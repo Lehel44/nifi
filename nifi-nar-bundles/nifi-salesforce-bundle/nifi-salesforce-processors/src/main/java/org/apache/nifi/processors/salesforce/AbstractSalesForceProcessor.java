@@ -149,7 +149,7 @@ public abstract class AbstractSalesForceProcessor extends AbstractProcessor {
         queryParams.forEach(builder::addQueryParameter);
         HttpUrl httpUrl = builder.build();
 
-        getLogger().debug("Salesforce url called: {}", new Object[]{httpUrl.toString()});
+        getLogger().debug("Salesforce url called: {}", httpUrl.toString());
 
         return new Request.Builder()
                 .url(httpUrl)
@@ -163,7 +163,7 @@ public abstract class AbstractSalesForceProcessor extends AbstractProcessor {
         queryParams.forEach(builder::addQueryParameter);
         HttpUrl httpUrl = builder.build();
 
-        getLogger().debug("Salesforce url called: {}", new Object[]{httpUrl.toString()});
+        getLogger().debug("Salesforce url called: {}", httpUrl.toString());
 
         return new Request.Builder()
                 .url(httpUrl)

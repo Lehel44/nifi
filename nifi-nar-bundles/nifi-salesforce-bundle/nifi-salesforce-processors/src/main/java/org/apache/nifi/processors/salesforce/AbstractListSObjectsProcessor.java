@@ -88,8 +88,8 @@ public abstract class AbstractListSObjectsProcessor extends AbstractSalesForcePr
     private String path;
     private String objectUrlPath;
     private String sObjectName;
-    private DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssxxxxx").withZone(ZoneId.of("UTC"));
-    private Clock clock;
+    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssxxxxx").withZone(ZoneId.of("UTC"));
+    private final Clock clock;
 
     public AbstractListSObjectsProcessor() {
         this(Clock.systemUTC());

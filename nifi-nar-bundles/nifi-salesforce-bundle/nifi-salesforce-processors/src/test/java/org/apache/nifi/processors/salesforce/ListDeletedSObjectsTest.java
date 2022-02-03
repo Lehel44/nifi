@@ -16,68 +16,67 @@
  */
 package org.apache.nifi.processors.salesforce;
 
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.util.HashMap;
-
+import okhttp3.mockwebserver.Dispatcher;
+import okhttp3.mockwebserver.MockResponse;
 import org.apache.nifi.components.state.Scope;
 import org.apache.nifi.util.MockFlowFile;
 import org.junit.Before;
 import org.junit.Test;
 
-import okhttp3.mockwebserver.Dispatcher;
-import okhttp3.mockwebserver.MockResponse;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.util.HashMap;
 
 public class ListDeletedSObjectsTest extends SalesForceProcessorTestBase {
 
-  @Override
-  @Before
-  public void setUp() throws Exception {
-    super.setUp();
-    setupTestRunner(new ListDeletedSObjects(Clock.fixed(Instant.parse("2019-06-15T00:00:00.00Z"), ZoneId.of("UTC"))));
-  }
+    @Override
+    @Before
+    public void setUp() throws Exception {
+        super.setUp();
+        setupTestRunner(new ListDeletedSObjects(Clock.fixed(Instant.parse("2019-06-15T00:00:00.00Z"), ZoneId.of("UTC"))));
+    }
 
-  @Test
-  public void testListDeletedWithFixDateTime() {
+    @Test
+    public void testListDeletedWithFixDateTime() {
 
-    testRunner.setProperty(ListUpdatedSObjects.SOBJECT_NAME, "Account");
-    testRunner.setProperty(ListUpdatedSObjects.START_DATE, "2019-06-15T00:00:00+00:00");
-    testRunner.setProperty(ListUpdatedSObjects.END_DATE, "2019-10-15T00:00:00+00:00");
+        testRunner.setProperty(ListUpdatedSObjects.SOBJECT_NAME, "Account");
+        testRunner.setProperty(ListUpdatedSObjects.START_DATE, "2019-06-15T00:00:00+00:00");
+        testRunner.setProperty(ListUpdatedSObjects.END_DATE, "2019-10-15T00:00:00+00:00");
 
-    testRunner.run(1);
-    testRunner.assertTransferCount(ListUpdatedSObjects.REL_SUCCESS, 1);
+        testRunner.run(1);
+        testRunner.assertTransferCount(ListUpdatedSObjects.REL_SUCCESS, 1);
 
-    MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(ListUpdatedSObjects.REL_SUCCESS).get(0);
+        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(ListUpdatedSObjects.REL_SUCCESS).get(0);
 
-    flowFile.assertAttributeEquals("salesforce.attributes.type", "Account");
-    flowFile.assertAttributeEquals("salesforce.lastDateCovered", "2019-07-12T10:39:00.000+0000");
-    testRunner.getStateManager().assertStateEquals("lastDate", "2019-07-12T10:39:00.000+0000",  Scope.CLUSTER );
-  }
+        flowFile.assertAttributeEquals("salesforce.attributes.type", "Account");
+        flowFile.assertAttributeEquals("salesforce.lastDateCovered", "2019-07-12T10:39:00.000+0000");
+        testRunner.getStateManager().assertStateEquals("lastDate", "2019-07-12T10:39:00.000+0000", Scope.CLUSTER);
+    }
 
-  @Test
-  public void testListDeletedFromCurrentDate() {
+    @Test
+    public void testListDeletedFromCurrentDate() {
 
-    testRunner.setProperty(ListUpdatedSObjects.SOBJECT_NAME, "Account");
+        testRunner.setProperty(ListUpdatedSObjects.SOBJECT_NAME, "Account");
 
-    testRunner.run(1);
-    testRunner.assertTransferCount(ListUpdatedSObjects.REL_SUCCESS, 1);
+        testRunner.run(1);
+        testRunner.assertTransferCount(ListUpdatedSObjects.REL_SUCCESS, 1);
 
-    MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(ListUpdatedSObjects.REL_SUCCESS).get(0);
+        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(ListUpdatedSObjects.REL_SUCCESS).get(0);
 
-    flowFile.assertAttributeEquals("salesforce.attributes.type", "Account");
-    flowFile.assertAttributeEquals("salesforce.lastDateCovered", "2019-07-12T10:39:00.000+0000");
-    testRunner.getStateManager().assertStateEquals("lastDate", "2019-07-12T10:39:00.000+0000",  Scope.CLUSTER );
-  }
+        flowFile.assertAttributeEquals("salesforce.attributes.type", "Account");
+        flowFile.assertAttributeEquals("salesforce.lastDateCovered", "2019-07-12T10:39:00.000+0000");
+        testRunner.getStateManager().assertStateEquals("lastDate", "2019-07-12T10:39:00.000+0000", Scope.CLUSTER);
+    }
 
 
-  @Override
-  protected Dispatcher getDispatcher() {
-    HashMap<String, MockResponse> mockResponseMap = new HashMap<>();
-    mockResponseMap.put("/services/data/v46.0/sobjects/Account/deleted?start=2019-06-15T00%3A00%3A00%2B00%3A00&end=2019-10-15T00%3A00%3A00%2B00%3A00",
-        createMockResponse("fixtures/list_deleted.json", 200));
-    mockResponseMap.put("/services/data/v46.0/sobjects/Account/deleted?start=2019-06-15T00%3A00%3A00%2B00%3A00&end=2019-07-15T00%3A00%3A00%2B00%3A00",
-        createMockResponse("fixtures/list_deleted.json", 200));
-    return getDispatcher(mockResponseMap);
-  }
+    @Override
+    protected Dispatcher getDispatcher() {
+        HashMap<String, MockResponse> mockResponseMap = new HashMap<>();
+        mockResponseMap.put("/services/data/v46.0/sobjects/Account/deleted?start=2019-06-15T00%3A00%3A00%2B00%3A00&end=2019-10-15T00%3A00%3A00%2B00%3A00",
+                createMockResponse("fixtures/list_deleted.json", 200));
+        mockResponseMap.put("/services/data/v46.0/sobjects/Account/deleted?start=2019-06-15T00%3A00%3A00%2B00%3A00&end=2019-07-15T00%3A00%3A00%2B00%3A00",
+                createMockResponse("fixtures/list_deleted.json", 200));
+        return getDispatcher(mockResponseMap);
+    }
 }

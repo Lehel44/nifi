@@ -16,46 +16,45 @@
  */
 package org.apache.nifi.processors.salesforce;
 
-import java.util.HashMap;
-import java.util.Map;
-
+import okhttp3.mockwebserver.Dispatcher;
+import okhttp3.mockwebserver.MockResponse;
 import org.apache.nifi.util.MockFlowFile;
 import org.junit.Before;
 import org.junit.Test;
 
-import okhttp3.mockwebserver.Dispatcher;
-import okhttp3.mockwebserver.MockResponse;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ListSObjectMetaTest extends SalesForceProcessorTestBase {
 
 
-  @Override
-  @Before
-  public void setUp() throws Exception {
-    super.setUp();
-    setupTestRunner(ListSObjectMeta.class);
-  }
+    @Override
+    @Before
+    public void setUp() throws Exception {
+        super.setUp();
+        setupTestRunner(ListSObjectMeta.class);
+    }
 
-  @Test
-  public void testNormalResponse() {
-    testRunner.run();
-    testRunner.assertTransferCount(ListSObjectMeta.REL_SUCCESS, 3);
-    MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(ListSObjectMeta.REL_SUCCESS).get(0);
-    flowFile.assertAttributeEquals("salesforce.attributes.url", "/services/data/v46.0/sobjects/AcceptedEventRelation");
-    flowFile.assertAttributeEquals("salesforce.attributes.objectName", "AcceptedEventRelation");
-    flowFile.assertContentEquals("{\"activateable\":false,\"createable\":false,\"custom\":false,\"customSetting\":false,\"deletable\":false,\"deprecatedAndHidden\":false," +
-      "\"feedEnabled\":false,\"hasSubtypes\":false,\"isSubtype\":false,\"keyPrefix\":null,\"label\":\"Accepted Event Relation\",\"labelPlural\":\"Accepted Event Relations\"," +
-      "\"layoutable\":false,\"mergeable\":false,\"mruEnabled\":false,\"name\":\"AcceptedEventRelation\",\"queryable\":true,\"replicateable\":false,\"retrieveable\":true," +
-      "\"searchable\":false,\"triggerable\":false,\"undeletable\":false,\"updateable\":false,\"urls\":{\"rowTemplate\":\"/services/data/v46.0/sobjects/AcceptedEventRelation/{ID}\"," +
-      "\"defaultValues\":\"/services/data/v46.0/sobjects/AcceptedEventRelation/defaultValues?recordTypeId&fields\",\"describe\":\"/services/data/v46.0/sobjects/AcceptedEventRelation/describe\"," +
-      "\"sobject\":\"/services/data/v46.0/sobjects/AcceptedEventRelation\"}}");
+    @Test
+    public void testNormalResponse() {
+        testRunner.run();
+        testRunner.assertTransferCount(ListSObjectMeta.REL_SUCCESS, 3);
+        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(ListSObjectMeta.REL_SUCCESS).get(0);
+        flowFile.assertAttributeEquals("salesforce.attributes.url", "/services/data/v46.0/sobjects/AcceptedEventRelation");
+        flowFile.assertAttributeEquals("salesforce.attributes.objectName", "AcceptedEventRelation");
+        flowFile.assertContentEquals("{\"activateable\":false,\"createable\":false,\"custom\":false,\"customSetting\":false,\"deletable\":false,\"deprecatedAndHidden\":false," +
+                "\"feedEnabled\":false,\"hasSubtypes\":false,\"isSubtype\":false,\"keyPrefix\":null,\"label\":\"Accepted Event Relation\",\"labelPlural\":\"Accepted Event Relations\"," +
+                "\"layoutable\":false,\"mergeable\":false,\"mruEnabled\":false,\"name\":\"AcceptedEventRelation\",\"queryable\":true,\"replicateable\":false,\"retrieveable\":true," +
+                "\"searchable\":false,\"triggerable\":false,\"undeletable\":false,\"updateable\":false,\"urls\":{\"rowTemplate\":\"/services/data/v46.0/sobjects/AcceptedEventRelation/{ID}\"," +
+                "\"defaultValues\":\"/services/data/v46.0/sobjects/AcceptedEventRelation/defaultValues?recordTypeId&fields\",\"describe\":\"/services/data/v46.0/sobjects/AcceptedEventRelation/describe\"," +
+                "\"sobject\":\"/services/data/v46.0/sobjects/AcceptedEventRelation\"}}");
 
-  }
+    }
 
-  @Override
-  protected Dispatcher getDispatcher() {
-    Map<String, MockResponse> mockResponseMap = new HashMap<>();
-    mockResponseMap.put("/services/data/v46.0/sobjects", createMockResponse("fixtures/describe_global.json", 200));
-    return getDispatcher(mockResponseMap);
-  }
+    @Override
+    protected Dispatcher getDispatcher() {
+        Map<String, MockResponse> mockResponseMap = new HashMap<>();
+        mockResponseMap.put("/services/data/v46.0/sobjects", createMockResponse("fixtures/describe_global.json", 200));
+        return getDispatcher(mockResponseMap);
+    }
 }

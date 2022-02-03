@@ -128,16 +128,15 @@ public class QuerySOQL extends AbstractSalesForceProcessor {
             .defaultValue("false")
             .addValidator(StandardValidators.BOOLEAN_VALIDATOR)
             .build();
-
+    // A Map (name to value) of initial maximum-value properties, filled at schedule-time and used at trigger-time
+    protected Map<String, String> maxValueProperties;
     private String path;
     private Long maxRowsPerFlowFile;
     private String fieldNames;
     private String objectName;
-    private AtomicBoolean metaDataIsSet = new AtomicBoolean(false);
+    private final AtomicBoolean metaDataIsSet = new AtomicBoolean(false);
     private String apiVersion;
     private Map<String, String> fieldTypeMap;
-    // A Map (name to value) of initial maximum-value properties, filled at schedule-time and used at trigger-time
-    protected Map<String, String> maxValueProperties;
     private List<String> maxValueColumnNames;
 
     @Override
@@ -216,7 +215,7 @@ public class QuerySOQL extends AbstractSalesForceProcessor {
             // Update the state
             stateManager.setState(statePropertyMap, Scope.CLUSTER);
         } catch (IOException ioe) {
-            getLogger().error("{} failed to update State Manager, maximum observed values will not be recorded", new Object[]{this, ioe});
+            getLogger().error("{} failed to update State Manager, maximum observed values will not be recorded", this, ioe);
         }
     }
 
@@ -353,9 +352,9 @@ public class QuerySOQL extends AbstractSalesForceProcessor {
     }
 
     private class ResultWriter {
-        private ProcessSession session;
-        private List<JsonValue> records = new LinkedList<>();
-        private List<FlowFile> flowfiles = new LinkedList<>();
+        private final ProcessSession session;
+        private final List<JsonValue> records = new LinkedList<>();
+        private final List<FlowFile> flowfiles = new LinkedList<>();
 
         public ResultWriter(ProcessSession session) {
             this.session = session;

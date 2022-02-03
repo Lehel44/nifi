@@ -16,15 +16,10 @@
  */
 package org.apache.nifi.processors.salesforce;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.Map;
-import java.util.Objects;
-
+import okhttp3.mockwebserver.Dispatcher;
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
+import okhttp3.mockwebserver.RecordedRequest;
 import org.apache.nifi.processor.Processor;
 import org.apache.nifi.processors.salesforce.controllers.SalesForceAuthService;
 import org.apache.nifi.reporting.InitializationException;
@@ -33,88 +28,92 @@ import org.apache.nifi.util.TestRunners;
 import org.junit.After;
 import org.junit.Before;
 
-import okhttp3.mockwebserver.Dispatcher;
-import okhttp3.mockwebserver.MockResponse;
-import okhttp3.mockwebserver.MockWebServer;
-import okhttp3.mockwebserver.RecordedRequest;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Map;
+import java.util.Objects;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 abstract public class SalesForceProcessorTestBase {
 
-  private static final String MOCK_AUTH_SERVICE_ID = "mockAuthService";
-  private static final String TEST_API_VERSION = "v46.0";
-  SalesForceAuthService mockAuthService;
-  private MockWebServer mockServer;
-  TestRunner testRunner;
+    private static final String MOCK_AUTH_SERVICE_ID = "mockAuthService";
+    private static final String TEST_API_VERSION = "v46.0";
+    SalesForceAuthService mockAuthService;
+    private MockWebServer mockServer;
+    TestRunner testRunner;
 
-  protected abstract Dispatcher getDispatcher();
+    protected abstract Dispatcher getDispatcher();
 
-  @Before
-  public void setUp() throws Exception {
-    mockServer = new MockWebServer();
-    mockServer.setDispatcher(getDispatcher());
-    mockServer.start();
-    String instanceUrl = "http://" + mockServer.getHostName() + ":" + mockServer.getPort();
-
-
-    mockAuthService = mock(SalesForceAuthService.class);
-    when(mockAuthService.getIdentifier()).thenReturn(MOCK_AUTH_SERVICE_ID);
-    when(mockAuthService.getInstanceUrl()).thenReturn(instanceUrl);
-    when(mockAuthService.getToken()).thenReturn("validToken");
+    @Before
+    public void setUp() throws Exception {
+        mockServer = new MockWebServer();
+        mockServer.setDispatcher(getDispatcher());
+        mockServer.start();
+        String instanceUrl = "http://" + mockServer.getHostName() + ":" + mockServer.getPort();
 
 
-  }
+        mockAuthService = mock(SalesForceAuthService.class);
+        when(mockAuthService.getIdentifier()).thenReturn(MOCK_AUTH_SERVICE_ID);
+        when(mockAuthService.getInstanceUrl()).thenReturn(instanceUrl);
+        when(mockAuthService.getToken()).thenReturn("validToken");
 
-  void setupTestRunner(Processor processor) throws InitializationException {
-    testRunner = TestRunners.newTestRunner(processor);
-    configureTestRunner();
-  }
 
-  void setupTestRunner(Class<? extends AbstractSalesForceProcessor> processorClass) throws InitializationException {
-    testRunner = TestRunners.newTestRunner(processorClass);
-    configureTestRunner();
-  }
-
-  private void configureTestRunner() throws InitializationException {
-    testRunner.addControllerService(MOCK_AUTH_SERVICE_ID, mockAuthService);
-    testRunner.enableControllerService(mockAuthService);
-    testRunner.setProperty(AbstractSalesForceProcessor.AUTH_SERVICE, MOCK_AUTH_SERVICE_ID);
-    testRunner.setProperty(AbstractSalesForceProcessor.API_VERSION, TEST_API_VERSION);
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    mockServer.shutdown();
-  }
-
-  MockResponse createMockResponse(String name, int responseCode) {
-    MockResponse response = new MockResponse();
-    response.setResponseCode(responseCode);
-    String body = "";
-    try {
-      body = readFile(name);
-    } catch (IOException e) {
-      throw new RuntimeException("Error while reading file: " + name, e);
     }
-    response.setBody(body);
-    return response;
-  }
 
-  String readFile(String name) throws IOException {
-    return new String(Files.readAllBytes(Paths.get(Objects.requireNonNull(getClass().getClassLoader().getResource(name)).getPath())));
-  }
+    void setupTestRunner(Processor processor) throws InitializationException {
+        testRunner = TestRunners.newTestRunner(processor);
+        configureTestRunner();
+    }
 
-  Dispatcher getDispatcher(Map<String, MockResponse> mockResponseMap) {
-    return new Dispatcher() {
+    void setupTestRunner(Class<? extends AbstractSalesForceProcessor> processorClass) throws InitializationException {
+        testRunner = TestRunners.newTestRunner(processorClass);
+        configureTestRunner();
+    }
 
-      @Override
-      public MockResponse dispatch(RecordedRequest recordedRequest) {
-        String header = recordedRequest.getHeader("Authorization");
-        if (header.equals("Bearer validToken")) {
-          return mockResponseMap.getOrDefault(recordedRequest.getPath(), new MockResponse().setResponseCode(404));
-        } else {
-          return createMockResponse("fixtures/session_invalid.json", 401);
+    private void configureTestRunner() throws InitializationException {
+        testRunner.addControllerService(MOCK_AUTH_SERVICE_ID, mockAuthService);
+        testRunner.enableControllerService(mockAuthService);
+        testRunner.setProperty(AbstractSalesForceProcessor.AUTH_SERVICE, MOCK_AUTH_SERVICE_ID);
+        testRunner.setProperty(AbstractSalesForceProcessor.API_VERSION, TEST_API_VERSION);
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        mockServer.shutdown();
+    }
+
+    MockResponse createMockResponse(String name, int responseCode) {
+        MockResponse response = new MockResponse();
+        response.setResponseCode(responseCode);
+        String body = "";
+        try {
+            body = readFile(name);
+        } catch (IOException e) {
+            throw new RuntimeException("Error while reading file: " + name, e);
         }
-      }
-    };
-  }
+        response.setBody(body);
+        return response;
+    }
+
+    String readFile(String name) throws IOException {
+        return new String(Files.readAllBytes(Paths.get(Objects.requireNonNull(getClass().getClassLoader().getResource(name)).getPath())));
+    }
+
+    Dispatcher getDispatcher(Map<String, MockResponse> mockResponseMap) {
+        return new Dispatcher() {
+
+            @Override
+            public MockResponse dispatch(RecordedRequest recordedRequest) {
+                String header = recordedRequest.getHeader("Authorization");
+                if (header.equals("Bearer validToken")) {
+                    return mockResponseMap.getOrDefault(recordedRequest.getPath(), new MockResponse().setResponseCode(404));
+                } else {
+                    return createMockResponse("fixtures/session_invalid.json", 401);
+                }
+            }
+        };
+    }
 }
