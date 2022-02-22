@@ -1,0 +1,10 @@
+{
+  "fields": [
+    {
+      "defaultValue": null,
+      "name": "BillingAddress",
+      "nillable": true,
+      "soapType": "urn:address"
+    }
+  ]
+}

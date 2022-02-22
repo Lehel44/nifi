@@ -1,0 +1,10 @@
+{
+  "fields" : [
+    {
+      "defaultValue": null,
+      "name": "CreatedDate",
+      "nillable": false,
+      "soapType": "xsd:dateTime"
+    }
+  ]
+}

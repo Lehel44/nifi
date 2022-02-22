@@ -10,27 +10,34 @@ import org.apache.nifi.serialization.record.RecordFieldType;
 import org.apache.nifi.serialization.record.RecordSchema;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SalesForceToRecordSchemaConverter {
+public class StandardSfToRecordSchemaConverter implements SfToRecordSchemaConverter {
 
-    public RecordSchema createSalesforceRecordSchema() throws IOException {
-        final String describeAccount = readFile("src/test/resources/account/describe_account.json");
+    private final String dateFormat;
+    private final String dateTimeFormat;
+    private final String timeFormat;
+
+    public StandardSfToRecordSchemaConverter(String dateFormat, String dateTimeFormat, String timeFormat) {
+        this.dateFormat = dateFormat;
+        this.dateTimeFormat = dateTimeFormat;
+        this.timeFormat = timeFormat;
+    }
+
+    public RecordSchema convertSchema(final String describeSObject) throws IOException {
+
         final ObjectMapper objectMapper = JsonUtils.createObjectMapper();
-        final SObjectDescription sObjectDescription = objectMapper.readValue(describeAccount, SObjectDescription.class);
+        final SObjectDescription sObjectDescription = objectMapper.readValue(describeSObject, SObjectDescription.class);
         final List<SObjectField> fields = sObjectDescription.getFields();
 
         final List<RecordField> attributesFields = new ArrayList<>();
-        attributesFields.add(new RecordField("latitude", RecordFieldType.STRING.getDataType(), true));
-        attributesFields.add(new RecordField("longitude", RecordFieldType.STRING.getDataType(), true));
+        attributesFields.add(new RecordField("type", RecordFieldType.STRING.getDataType(), true));
+        attributesFields.add(new RecordField("url", RecordFieldType.STRING.getDataType(), true));
         final RecordSchema attributesSchema = new SimpleRecordSchema(attributesFields);
 
         final List<RecordField> recordFields = new ArrayList<>();
-        recordFields.add(new RecordField("attributes", RecordFieldType.RECORD.getRecordDataType(attributesSchema), false));
+        recordFields.add(new RecordField("attributes", RecordFieldType.RECORD.getRecordDataType(attributesSchema), true));
 
         for (SObjectField field : fields) {
             final String soapType = field.getSoapType();
@@ -38,24 +45,17 @@ public class SalesForceToRecordSchemaConverter {
             switch (soapType.substring(soapType.indexOf(':') + 1)) {
                 case "ID": // mapping for tns:ID SOAP type
                 case "string":
+                case "json":
                 case "base64Binary":
                     // Salesforce maps any types like string, picklist, reference,
                     // etc. to string
                 case "anyType":
                     recordFields.add(new RecordField(field.getName(), RecordFieldType.STRING.getDataType(), field.getDefaultValue(), field.isNillable()));
                     break;
-                case "integer":
                 case "int":
                 case "long":
-                case "short":
-                case "byte":
-                case "unsignedInt":
-                case "unsignedShort":
-                case "unsignedByte":
                     recordFields.add(new RecordField(field.getName(), RecordFieldType.INT.getDataType(), field.getDefaultValue(), field.isNillable()));
                     break;
-                case "decimal":
-                case "float":
                 case "double":
                     recordFields.add(new RecordField(field.getName(), RecordFieldType.DOUBLE.getDataType(), field.getDefaultValue(), field.isNillable()));
                     break;
@@ -63,14 +63,13 @@ public class SalesForceToRecordSchemaConverter {
                     recordFields.add(new RecordField(field.getName(), RecordFieldType.BOOLEAN.getDataType(), field.getDefaultValue(), field.isNillable()));
                     break;
                 case "date":
-                    recordFields.add(new RecordField(field.getName(), RecordFieldType.STRING.getDataType(), field.getDefaultValue(), field.isNillable()));
+                    recordFields.add(new RecordField(field.getName(), RecordFieldType.STRING.getDataType(dateFormat), field.getDefaultValue(), field.isNillable()));
                     break;
                 case "dateTime":
-                case "g":
-                    recordFields.add(new RecordField(field.getName(), RecordFieldType.STRING.getDataType(), field.getDefaultValue(), field.isNillable()));
+                    recordFields.add(new RecordField(field.getName(), RecordFieldType.STRING.getDataType(dateTimeFormat), field.getDefaultValue(), field.isNillable()));
                     break;
                 case "time":
-                    recordFields.add(new RecordField(field.getName(), RecordFieldType.TIME.getDataType(), field.getDefaultValue(), field.isNillable()));
+                    recordFields.add(new RecordField(field.getName(), RecordFieldType.TIME.getDataType(timeFormat), field.getDefaultValue(), field.isNillable()));
                     break;
                 case "address":
                     final List<RecordField> addressFields = new ArrayList<>();
@@ -99,10 +98,4 @@ public class SalesForceToRecordSchemaConverter {
 
         return new SimpleRecordSchema(recordFields);
     }
-
-    private String readFile(final String path) throws IOException {
-        final byte[] content = Files.readAllBytes(Paths.get(path));
-        return new String(content, StandardCharsets.UTF_8);
-    }
-
 }

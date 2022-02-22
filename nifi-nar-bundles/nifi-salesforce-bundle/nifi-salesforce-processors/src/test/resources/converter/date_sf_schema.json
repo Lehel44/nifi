@@ -1,0 +1,10 @@
+{
+  "fields" : [
+    {
+      "defaultValue": null,
+      "name": "SLAExpirationDate__c",
+      "nillable": true,
+      "soapType": "xsd:date"
+    }
+  ]
+}

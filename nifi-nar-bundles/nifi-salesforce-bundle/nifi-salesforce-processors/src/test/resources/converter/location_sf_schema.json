@@ -1,0 +1,10 @@
+{
+  "fields": [
+    {
+      "defaultValue": null,
+      "name": "DestinationLocation",
+      "nillable": true,
+      "soapType": "tns:location"
+    }
+  ]
+}

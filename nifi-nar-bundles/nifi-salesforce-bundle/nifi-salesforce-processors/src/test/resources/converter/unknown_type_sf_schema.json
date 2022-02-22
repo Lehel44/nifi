@@ -1,0 +1,10 @@
+{
+  "fields": [
+    {
+      "defaultValue": null,
+      "name": "Unknown",
+      "nillable": true,
+      "soapType": "xsd:unknown"
+    }
+  ]
+}

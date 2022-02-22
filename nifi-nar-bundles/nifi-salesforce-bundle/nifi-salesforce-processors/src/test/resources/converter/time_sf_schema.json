@@ -1,0 +1,10 @@
+{
+  "fields" : [
+    {
+      "defaultValue": null,
+      "name": "FridayEndTime",
+      "nillable": false,
+      "soapType": "xsd:time"
+    }
+  ]
+}
