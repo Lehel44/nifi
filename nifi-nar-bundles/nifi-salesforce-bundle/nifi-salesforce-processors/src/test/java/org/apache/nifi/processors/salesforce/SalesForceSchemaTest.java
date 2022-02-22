@@ -195,9 +195,17 @@ class SalesForceSchemaTest {
 
         Record record = reader.nextRecord();
 
-        WriteResult writeResult = writer.write(RecordSet.of(record.getSchema(), record));
+//        WriteResult writeResult = writer.write(RecordSet.of(record.getSchema(), record));
+//
+//        System.out.println(writeResult);
 
-        System.out.println(writeResult);
+        MockRecordWriter sad = new MockRecordWriter();
+        final RecordSetWriter writer1 = sad.createWriter(mockComponentLog, recordSchema, out, Collections.emptyMap());
+        writer1.beginRecordSet();
+        writer1.write(record);
+        writer1.finishRecordSet();
+
+
 
         in.close();
         out.close();
@@ -210,8 +218,8 @@ class SalesForceSchemaTest {
         final List<SObjectField> fields = sObjectDescription.getFields();
 
         final List<RecordField> attributesFields = new ArrayList<>();
-        attributesFields.add(new RecordField("latitude", RecordFieldType.STRING.getDataType(), true));
-        attributesFields.add(new RecordField("longitude", RecordFieldType.STRING.getDataType(), true));
+        attributesFields.add(new RecordField("type", RecordFieldType.STRING.getDataType(), true));
+        attributesFields.add(new RecordField("url", RecordFieldType.STRING.getDataType(), true));
         final RecordSchema attributesSchema = new SimpleRecordSchema(attributesFields);
 
         final List<RecordField> recordFields = new ArrayList<>();
@@ -231,16 +239,26 @@ class SalesForceSchemaTest {
                     break;
                 case "integer":
                 case "int":
-                case "long":
-                case "short":
-                case "byte":
                 case "unsignedInt":
-                case "unsignedShort":
-                case "unsignedByte":
                     recordFields.add(new RecordField(field.getName(), RecordFieldType.INT.getDataType(), field.getDefaultValue(), field.isNillable()));
                     break;
+                case "long":
+                    recordFields.add(new RecordField(field.getName(), RecordFieldType.LONG.getDataType(), field.getDefaultValue(), field.isNillable()));
+                    break;
+                case "short":
+                case "unsignedShort":
+                    recordFields.add(new RecordField(field.getName(), RecordFieldType.SHORT.getDataType(), field.getDefaultValue(), field.isNillable()));
+                    break;
+                case "byte":
+                case "unsignedByte":
+                    recordFields.add(new RecordField(field.getName(), RecordFieldType.BYTE.getDataType(), field.getDefaultValue(), field.isNillable()));
+                    break;
                 case "decimal":
+                    recordFields.add(new RecordField(field.getName(), RecordFieldType.DECIMAL.getDataType("asd"), field.getDefaultValue(), field.isNillable()));
+                    break;
                 case "float":
+                    recordFields.add(new RecordField(field.getName(), RecordFieldType.FLOAT.getDataType(), field.getDefaultValue(), field.isNillable()));
+                    break;
                 case "double":
                     recordFields.add(new RecordField(field.getName(), RecordFieldType.DOUBLE.getDataType(), field.getDefaultValue(), field.isNillable()));
                     break;
@@ -248,14 +266,14 @@ class SalesForceSchemaTest {
                     recordFields.add(new RecordField(field.getName(), RecordFieldType.BOOLEAN.getDataType(), field.getDefaultValue(), field.isNillable()));
                     break;
                 case "date":
-                    recordFields.add(new RecordField(field.getName(), RecordFieldType.STRING.getDataType(), field.getDefaultValue(), field.isNillable()));
+                    recordFields.add(new RecordField(field.getName(), RecordFieldType.DATE.getDataType(dateFormat), field.getDefaultValue(), field.isNillable()));
                     break;
                 case "dateTime":
                 case "g":
-                    recordFields.add(new RecordField(field.getName(), RecordFieldType.STRING.getDataType(), field.getDefaultValue(), field.isNillable()));
+                    recordFields.add(new RecordField(field.getName(), RecordFieldType.TIMESTAMP.getDataType(dateTimeFormat), field.getDefaultValue(), field.isNillable()));
                     break;
                 case "time":
-                    recordFields.add(new RecordField(field.getName(), RecordFieldType.TIME.getDataType(), field.getDefaultValue(), field.isNillable()));
+                    recordFields.add(new RecordField(field.getName(), RecordFieldType.TIME.getDataType(timeFormat), field.getDefaultValue(), field.isNillable()));
                     break;
                 case "address":
                     final List<RecordField> addressFields = new ArrayList<>();
