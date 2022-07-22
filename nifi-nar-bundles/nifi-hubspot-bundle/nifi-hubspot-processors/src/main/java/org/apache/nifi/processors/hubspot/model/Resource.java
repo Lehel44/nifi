@@ -17,7 +17,13 @@
 package org.apache.nifi.processors.hubspot.model;
 
 import org.apache.nifi.components.AllowableValue;
+import org.apache.nifi.processors.shopify.rest.RestUriType;
 
 public interface Resource {
+
+    IncrementalLoadingParameter getIncrementalLoadingParameter();
+
+    RestUriType getUri();
+
     AllowableValue getAllowableValue();
 }
