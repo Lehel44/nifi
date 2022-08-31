@@ -39,6 +39,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -81,6 +82,12 @@ class GetHubSpotTest {
             server.shutdown();
             server = null;
         }
+    }
+
+    @Test
+    void asd() {
+        Instant instant = Instant.parse("2022-07-24T19:36:21.368Z");
+        System.out.println(instant.toEpochMilli());
     }
 
     @Test

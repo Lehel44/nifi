@@ -22,6 +22,8 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.io.IOUtils;
 import org.apache.nifi.annotation.behavior.InputRequirement;
 import org.apache.nifi.annotation.behavior.InputRequirement.Requirement;
@@ -33,6 +35,7 @@ import org.apache.nifi.annotation.configuration.DefaultSettings;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.annotation.lifecycle.OnScheduled;
+import org.apache.nifi.components.AllowableValue;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.components.state.Scope;
 import org.apache.nifi.components.state.StateMap;
@@ -54,13 +57,17 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @PrimaryNodeOnly
 @TriggerSerially
@@ -74,6 +81,10 @@ import java.util.concurrent.atomic.AtomicInteger;
         + " Only the objects after the paging cursor will be retrieved. The maximum number of retrieved objects is the 'Limit' attribute.")
 @DefaultSettings(yieldDuration = "10 sec")
 public class GetHubSpot extends AbstractProcessor {
+
+    static final AllowableValue CREATE_DATE = new AllowableValue("createDate", "Create Date", "The time of the field was created");
+    static final AllowableValue LAST_MODIFIED_DATE = new AllowableValue("lastModifiedDate", "Last Modified Date",
+            "The time of the field was last modified");
 
     static final PropertyDescriptor OBJECT_TYPE = new PropertyDescriptor.Builder()
             .name("object-type")
@@ -102,6 +113,27 @@ public class GetHubSpot extends AbstractProcessor {
             .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
             .build();
 
+    static final PropertyDescriptor IS_INCREMENTAL = new PropertyDescriptor.Builder()
+            .name("is-incremental")
+            .displayName("Incremental Loading")
+            .description("The processor can incrementally load the queried objects so that each object is queried exactly once." +
+                    " For each query, the processor queries objects which were created or modified after the previous run time" +
+                    " but before the current time.")
+            .required(true)
+            .allowableValues("true", "false")
+            .defaultValue("false")
+            .build();
+
+    static final PropertyDescriptor INCREMENTAL_FIELD = new PropertyDescriptor.Builder()
+            .name("incremental-field")
+            .displayName("Incremental Field")
+            .description("The field that the Processor uses to perform incremental loading")
+            .required(true)
+            .allowableValues(CREATE_DATE, LAST_MODIFIED_DATE)
+            .defaultValue(LAST_MODIFIED_DATE.getValue())
+            .dependsOn(IS_INCREMENTAL, "true")
+            .build();
+
     static final PropertyDescriptor WEB_CLIENT_SERVICE_PROVIDER = new PropertyDescriptor.Builder()
             .name("web-client-service-provider")
             .displayName("Web Client Service Provider")
@@ -122,6 +154,13 @@ public class GetHubSpot extends AbstractProcessor {
     private static final int TOO_MANY_REQUESTS = 429;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final JsonFactory JSON_FACTORY = OBJECT_MAPPER.getFactory();
+    private static final String EMPTY_JSON = "{}";
+    private static final Map<String, HubSpotObjectType> objectTypeLookupMap = createObjectTypeLookupMap();
+
+    private static Map<String, HubSpotObjectType> createObjectTypeLookupMap() {
+        return Arrays.stream(HubSpotObjectType.values())
+                .collect(Collectors.toMap(HubSpotObjectType::getValue, Function.identity()));
+    }
 
     private volatile WebClientServiceProvider webClientServiceProvider;
 
@@ -129,10 +168,13 @@ public class GetHubSpot extends AbstractProcessor {
             OBJECT_TYPE,
             ACCESS_TOKEN,
             RESULT_LIMIT,
+            IS_INCREMENTAL,
+            INCREMENTAL_FIELD,
             WEB_CLIENT_SERVICE_PROVIDER
     ));
 
     private static final Set<Relationship> RELATIONSHIPS = Collections.singleton(REL_SUCCESS);
+    private AtomicInteger total = new AtomicInteger(-1);
 
     @OnScheduled
     public void onScheduled(final ProcessContext context) {
@@ -155,15 +197,14 @@ public class GetHubSpot extends AbstractProcessor {
         final String endpoint = context.getProperty(OBJECT_TYPE).getValue();
 
         final StateMap state = getStateMap(context);
-        final URI uri = createUri(context, state);
+        final URI uri = getBaseUri(context);
 
-        final HttpResponseEntity response = getHttpResponseEntity(accessToken, uri);
-        final AtomicInteger objectCountHolder = new AtomicInteger();
+        final HttpResponseEntity response = getHttpResponseEntity(context, accessToken, uri);
 
         if (response.statusCode() == HttpResponseStatus.OK.getCode()) {
             FlowFile flowFile = session.create();
-            flowFile = session.write(flowFile, parseHttpResponse(context, endpoint, state, response, objectCountHolder));
-            if (objectCountHolder.get() > 0) {
+            flowFile = session.write(flowFile, parseHttpResponse(context, endpoint, state, response));
+            if (total.get() > 0) {
                 session.transfer(flowFile, REL_SUCCESS);
             } else {
                 getLogger().debug("Empty response when requested HubSpot endpoint: [{}]", endpoint);
@@ -187,61 +228,105 @@ public class GetHubSpot extends AbstractProcessor {
         }
     }
 
-    private OutputStreamCallback parseHttpResponse(ProcessContext context, String endpoint, StateMap state, HttpResponseEntity response, AtomicInteger objectCountHolder) {
+    private OutputStreamCallback parseHttpResponse(ProcessContext context, String endpoint, StateMap state, HttpResponseEntity response) {
         return out -> {
             try (final JsonParser jsonParser = JSON_FACTORY.createParser(response.body());
                  final JsonGenerator jsonGenerator = JSON_FACTORY.createGenerator(out, JsonEncoding.UTF8)) {
                 while (jsonParser.nextToken() != null) {
                     if (jsonParser.getCurrentToken() == JsonToken.FIELD_NAME && jsonParser.getCurrentName()
+                            .equals("total")) {
+                        jsonParser.nextToken();
+                        total.set(jsonParser.getIntValue());
+                    }
+                    if (jsonParser.getCurrentToken() == JsonToken.FIELD_NAME && jsonParser.getCurrentName()
                             .equals("results")) {
                         jsonParser.nextToken();
                         jsonGenerator.copyCurrentStructure(jsonParser);
-                        objectCountHolder.incrementAndGet();
                     }
-                    final String fieldName = jsonParser.getCurrentName();
-                    if (CURSOR_PARAMETER.equals(fieldName)) {
-                        jsonParser.nextToken();
-                        Map<String, String> newStateMap = new HashMap<>(state.toMap());
-                        newStateMap.put(endpoint, jsonParser.getText());
-                        updateState(context, newStateMap);
-                        break;
-                    }
+//                    final String fieldName = jsonParser.getCurrentName();
+//                    if (CURSOR_PARAMETER.equals(fieldName)) {
+//                        jsonParser.nextToken();
+//                        Map<String, String> newStateMap = new HashMap<>(state.toMap());
+//                        newStateMap.put(endpoint, jsonParser.getText());
+//                        updateState(context, newStateMap);
+//                        break;
+//                    }
                 }
             }
         };
     }
 
-    HttpUriBuilder getBaseUri(final ProcessContext context) {
+    private URI getBaseUri(final ProcessContext context) {
         final String path = context.getProperty(OBJECT_TYPE).getValue();
         return webClientServiceProvider.getHttpUriBuilder()
                 .scheme(HTTPS)
                 .host(API_BASE_URI)
-                .encodedPath(path);
+                .encodedPath(path + "/search")
+                .build();
     }
 
-    private HttpResponseEntity getHttpResponseEntity(final String accessToken, final URI uri) {
+    private HttpResponseEntity getHttpResponseEntity(final ProcessContext context, final String accessToken, final URI uri) {
+        final InputStreamConverter converter = new InputStreamConverter(createIncrementalFilters(context));
         return webClientServiceProvider.getWebClientService()
-                .get()
+                .post()
                 .uri(uri)
                 .header("Authorization", "Bearer " + accessToken)
+                .header("Content-Type", "application/json")
+                .body(converter.getInputStreamFromJson(), OptionalLong.of(converter.getByteSize()))
                 .retrieve();
     }
 
-    private URI createUri(final ProcessContext context, final StateMap state) {
-        final String path = context.getProperty(OBJECT_TYPE).getValue();
-        final HttpUriBuilder uriBuilder = getBaseUri(context);
+    private String createIncrementalFilters(final ProcessContext context) {
+        final String objectType = context.getProperty(OBJECT_TYPE).getValue();
+        final HubSpotObjectType hubSpotObjectType = objectTypeLookupMap.get(objectType);
+        final String incrementalFieldName = context.getProperty(INCREMENTAL_FIELD).getValue();
+        final String incrementalKey = String.format("%s - %s", objectType, incrementalFieldName);
 
+        final ObjectNode root = OBJECT_MAPPER.createObjectNode();
         final boolean isLimitSet = context.getProperty(RESULT_LIMIT).evaluateAttributeExpressions().isSet();
         if (isLimitSet) {
             final String limit = context.getProperty(RESULT_LIMIT).getValue();
-            uriBuilder.addQueryParameter(LIMIT_PARAMETER, limit);
+            root.put("limit", limit);
         }
 
-        final String cursor = state.get(path);
-        if (cursor != null) {
-            uriBuilder.addQueryParameter(CURSOR_PARAMETER, cursor);
+        final boolean isIncremental = context.getProperty(IS_INCREMENTAL).asBoolean();
+        if (isIncremental) {
+
+            String hubspotSpecificIncrementalFieldName = null;
+            if (incrementalFieldName.equals(CREATE_DATE.getValue())) {
+                hubspotSpecificIncrementalFieldName = hubSpotObjectType.getCreateDateType().getValue();
+            } else if (incrementalFieldName.equals(LAST_MODIFIED_DATE.getValue())) {
+                hubspotSpecificIncrementalFieldName = hubSpotObjectType.getLastModifiedDateType().getValue();
+            }
+
+            final StateMap state = getStateMap(context);
+            final String lastExecutionTime = state.get(incrementalKey);
+
+            final ArrayNode filters = OBJECT_MAPPER.createArrayNode();
+
+            if (lastExecutionTime != null) {
+                final ObjectNode greaterThanFilterNode = OBJECT_MAPPER.createObjectNode();
+                greaterThanFilterNode.put("propertyName", hubspotSpecificIncrementalFieldName);
+                greaterThanFilterNode.put("operator", "GT");
+                greaterThanFilterNode.put("value", lastExecutionTime);
+                filters.add(greaterThanFilterNode);
+            }
+
+            final long now = Instant.now().toEpochMilli();
+
+            final ObjectNode lessThanFilterNode = OBJECT_MAPPER.createObjectNode();
+            lessThanFilterNode.put("propertyName", hubspotSpecificIncrementalFieldName);
+            lessThanFilterNode.put("operator", "LT");
+            lessThanFilterNode.put("value", now);
+            filters.add(lessThanFilterNode);
+
+            root.set("filters", filters);
+
+            final HashMap<String, String> stateMap = new HashMap<>(state.toMap());
+            stateMap.put(incrementalKey, String.valueOf(now));
+            updateState(context, stateMap);
         }
-        return uriBuilder.build();
+        return root.toString();
     }
 
     private StateMap getStateMap(final ProcessContext context) {
