@@ -50,7 +50,6 @@ import org.apache.nifi.processor.io.OutputStreamCallback;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.web.client.api.HttpResponseEntity;
 import org.apache.nifi.web.client.api.HttpResponseStatus;
-import org.apache.nifi.web.client.api.HttpUriBuilder;
 import org.apache.nifi.web.client.provider.api.WebClientServiceProvider;
 
 import java.io.IOException;
@@ -104,15 +103,6 @@ public class GetHubSpot extends AbstractProcessor {
             .expressionLanguageSupported(ExpressionLanguageScope.NONE)
             .build();
 
-    static final PropertyDescriptor RESULT_LIMIT = new PropertyDescriptor.Builder()
-            .name("result-limit")
-            .displayName("Result Limit")
-            .description("The maximum number of results to request for each invocation of the Processor")
-            .expressionLanguageSupported(ExpressionLanguageScope.FLOWFILE_ATTRIBUTES)
-            .required(false)
-            .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
-            .build();
-
     static final PropertyDescriptor IS_INCREMENTAL = new PropertyDescriptor.Builder()
             .name("is-incremental")
             .displayName("Incremental Loading")
@@ -149,12 +139,10 @@ public class GetHubSpot extends AbstractProcessor {
 
     private static final String API_BASE_URI = "api.hubapi.com";
     private static final String HTTPS = "https";
-    private static final String CURSOR_PARAMETER = "after";
     private static final String LIMIT_PARAMETER = "limit";
     private static final int TOO_MANY_REQUESTS = 429;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final JsonFactory JSON_FACTORY = OBJECT_MAPPER.getFactory();
-    private static final String EMPTY_JSON = "{}";
     private static final Map<String, HubSpotObjectType> objectTypeLookupMap = createObjectTypeLookupMap();
 
     private static Map<String, HubSpotObjectType> createObjectTypeLookupMap() {
@@ -167,7 +155,6 @@ public class GetHubSpot extends AbstractProcessor {
     private static final List<PropertyDescriptor> PROPERTY_DESCRIPTORS = Collections.unmodifiableList(Arrays.asList(
             OBJECT_TYPE,
             ACCESS_TOKEN,
-            RESULT_LIMIT,
             IS_INCREMENTAL,
             INCREMENTAL_FIELD,
             WEB_CLIENT_SERVICE_PROVIDER
@@ -203,7 +190,7 @@ public class GetHubSpot extends AbstractProcessor {
 
         if (response.statusCode() == HttpResponseStatus.OK.getCode()) {
             FlowFile flowFile = session.create();
-            flowFile = session.write(flowFile, parseHttpResponse(context, endpoint, state, response));
+            flowFile = session.write(flowFile, parseHttpResponse(response));
             if (total.get() > 0) {
                 session.transfer(flowFile, REL_SUCCESS);
             } else {
@@ -228,7 +215,7 @@ public class GetHubSpot extends AbstractProcessor {
         }
     }
 
-    private OutputStreamCallback parseHttpResponse(ProcessContext context, String endpoint, StateMap state, HttpResponseEntity response) {
+    private OutputStreamCallback parseHttpResponse(HttpResponseEntity response) {
         return out -> {
             try (final JsonParser jsonParser = JSON_FACTORY.createParser(response.body());
                  final JsonGenerator jsonGenerator = JSON_FACTORY.createGenerator(out, JsonEncoding.UTF8)) {
@@ -243,14 +230,6 @@ public class GetHubSpot extends AbstractProcessor {
                         jsonParser.nextToken();
                         jsonGenerator.copyCurrentStructure(jsonParser);
                     }
-//                    final String fieldName = jsonParser.getCurrentName();
-//                    if (CURSOR_PARAMETER.equals(fieldName)) {
-//                        jsonParser.nextToken();
-//                        Map<String, String> newStateMap = new HashMap<>(state.toMap());
-//                        newStateMap.put(endpoint, jsonParser.getText());
-//                        updateState(context, newStateMap);
-//                        break;
-//                    }
                 }
             }
         };
@@ -283,11 +262,6 @@ public class GetHubSpot extends AbstractProcessor {
         final String incrementalKey = String.format("%s - %s", objectType, incrementalFieldName);
 
         final ObjectNode root = OBJECT_MAPPER.createObjectNode();
-        final boolean isLimitSet = context.getProperty(RESULT_LIMIT).evaluateAttributeExpressions().isSet();
-        if (isLimitSet) {
-            final String limit = context.getProperty(RESULT_LIMIT).getValue();
-            root.put("limit", limit);
-        }
 
         final boolean isIncremental = context.getProperty(IS_INCREMENTAL).asBoolean();
         if (isIncremental) {
