@@ -17,11 +17,15 @@
 package org.apache.nifi.processors.salesforce.util;
 
 import okhttp3.HttpUrl;
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 import okhttp3.Response;
 import org.apache.nifi.processor.exception.ProcessException;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -79,6 +83,23 @@ public class SalesforceRestService {
                 .addHeader("Authorization", "Bearer " + accessTokenProvider.get())
                 .url(httpUrl)
                 .get()
+                .build();
+
+        return request(request);
+    }
+
+    public InputStream postRecord(String sObjectApiName, byte[] body) {
+        String url = baseUrl + "/services/data/v" + version + "/sobjects/" + sObjectApiName;
+
+        HttpUrl httpUrl = HttpUrl.get(url).newBuilder()
+                .build();
+
+        final RequestBody requestBody = RequestBody.create(body, MediaType.parse("application/json"));
+
+        Request request = new Request.Builder()
+                .addHeader("Authorization", "Bearer " + accessTokenProvider.get())
+                .url(httpUrl)
+                .post(requestBody)
                 .build();
 
         return request(request);

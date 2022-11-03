@@ -1,5 +1,7 @@
 package org.apache.nifi.processors.salesforce;
 
+import org.apache.nifi.annotation.behavior.InputRequirement;
+import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.expression.ExpressionLanguageScope;
@@ -12,7 +14,16 @@ import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.processors.salesforce.util.SalesforceRestService;
+import org.apache.nifi.serialization.RecordReader;
+import org.apache.nifi.serialization.RecordReaderFactory;
+import org.apache.nifi.serialization.RecordSetWriter;
+import org.apache.nifi.serialization.RecordSetWriterFactory;
+import org.apache.nifi.serialization.record.Record;
+import org.apache.nifi.stream.io.StreamUtils;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -20,6 +31,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+@InputRequirement(InputRequirement.Requirement.INPUT_REQUIRED)
+@Tags({"salesforce", "sobject", "put"})
 public class PutSalesforceRecord extends AbstractProcessor {
 
     static final PropertyDescriptor API_URL = new PropertyDescriptor.Builder()
@@ -77,6 +90,22 @@ public class PutSalesforceRecord extends AbstractProcessor {
             .required(true)
             .build();
 
+    protected static final PropertyDescriptor RECORD_READER_FACTORY = new PropertyDescriptor.Builder()
+            .name("record-reader")
+            .displayName("Record Reader")
+            .description("Specifies the Controller Service to use for parsing incoming data and determining the data's schema")
+            .identifiesControllerService(RecordReaderFactory.class)
+            .required(true)
+            .build();
+
+    protected static final PropertyDescriptor RECORD_WRITER_FACTORY = new PropertyDescriptor.Builder()
+            .name("record-writer")
+            .displayName("Record Writer")
+            .description("Specifies the Controller Service to use for writing out the records.")
+            .identifiesControllerService(RecordSetWriterFactory.class)
+            .required(true)
+            .build();
+
     static final Relationship REL_SUCCESS = new Relationship.Builder()
             .name("success")
             .description("For FlowFiles created as a result of a successful query.")
@@ -92,7 +121,9 @@ public class PutSalesforceRecord extends AbstractProcessor {
                 SOBJECT_NAME,
                 FIELD_NAMES,
                 READ_TIMEOUT,
-                TOKEN_PROVIDER
+                TOKEN_PROVIDER,
+                RECORD_READER_FACTORY,
+                RECORD_WRITER_FACTORY
         ));
     }
 
@@ -121,10 +152,36 @@ public class PutSalesforceRecord extends AbstractProcessor {
     @Override
     public void onTrigger(ProcessContext context, ProcessSession session) throws ProcessException {
         final FlowFile flowFile = session.get();
+        if (flowFile == null) {
+            return;
+        }
 
-        String baseUrl = context.getProperty(API_URL).getValue();
+        final String objectType = flowFile.getAttribute("objectType");
+        if (objectType == null) {
+            throw new ProcessException("Object type not found");
+        }
 
+//        final byte[] buffer = new byte[(int) flowFile.getSize()];
+//        session.read(flowFile, in -> StreamUtils.fillBuffer(in, buffer));
+//        salesforceRestService.postRecord(objectType, buffer);
 
-        salesforceRestService.
+        RecordReaderFactory readerFactory = context.getProperty(RECORD_READER_FACTORY).asControllerService(RecordReaderFactory.class);
+        RecordSetWriterFactory writerFactory = context.getProperty(RECORD_WRITER_FACTORY).asControllerService(RecordSetWriterFactory.class);
+
+        try (final InputStream in = session.read(flowFile);
+             final ByteArrayOutputStream out = new ByteArrayOutputStream(1000);
+             final RecordReader reader = readerFactory.createRecordReader(flowFile, in, getLogger());
+             final RecordSetWriter writer = writerFactory.createWriter(getLogger(), reader.getSchema(), out, flowFile)) {
+            writer.beginRecordSet();
+            Record record;
+            while ((record = reader.nextRecord()) != null) {
+                writer.write(record);
+                salesforceRestService.postRecord(objectType, out.toByteArray());
+                out.reset();
+            }
+            writer.finishRecordSet();
+        } catch (Exception ex) {
+            getLogger().error("Failed to put records to Salesforce.", ex);
+        }
     }
 }
