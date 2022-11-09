@@ -88,13 +88,14 @@ public class SalesforceRestService {
         return request(request);
     }
 
-    public InputStream postRecord(String sObjectApiName, byte[] body) {
-        String url = baseUrl + "/services/data/v" + version + "/sobjects/" + sObjectApiName;
+    public InputStream postRecord(String sObjectApiName, String body) {
+        String url = baseUrl + "/services/data/v" + version + "/composite/tree/" + sObjectApiName;
 
         HttpUrl httpUrl = HttpUrl.get(url).newBuilder()
                 .build();
 
         final RequestBody requestBody = RequestBody.create(body, MediaType.parse("application/json"));
+        requestBody.writeTo();
 
         Request request = new Request.Builder()
                 .addHeader("Authorization", "Bearer " + accessTokenProvider.get())
@@ -109,7 +110,7 @@ public class SalesforceRestService {
         Response response = null;
         try {
             response = httpClient.newCall(request).execute();
-            if (response.code() != 200) {
+            if (response.code() < 200 || response.code() >= 400) {
                 throw new ProcessException("Invalid response" +
                         " Code: " + response.code() +
                         " Message: " + response.message() +

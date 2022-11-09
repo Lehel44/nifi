@@ -1,5 +1,9 @@
 package org.apache.nifi.processors.salesforce;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nifi.annotation.behavior.InputRequirement;
 import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.annotation.lifecycle.OnScheduled;
@@ -19,6 +23,7 @@ import org.apache.nifi.serialization.RecordReaderFactory;
 import org.apache.nifi.serialization.RecordSetWriter;
 import org.apache.nifi.serialization.RecordSetWriterFactory;
 import org.apache.nifi.serialization.record.Record;
+import org.apache.nifi.serialization.record.SerializedForm;
 import org.apache.nifi.stream.io.StreamUtils;
 
 import java.io.ByteArrayOutputStream;
@@ -30,6 +35,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 @InputRequirement(InputRequirement.Requirement.INPUT_REQUIRED)
 @Tags({"salesforce", "sobject", "put"})
@@ -160,28 +166,46 @@ public class PutSalesforceRecord extends AbstractProcessor {
         if (objectType == null) {
             throw new ProcessException("Object type not found");
         }
-
-//        final byte[] buffer = new byte[(int) flowFile.getSize()];
-//        session.read(flowFile, in -> StreamUtils.fillBuffer(in, buffer));
-//        salesforceRestService.postRecord(objectType, buffer);
-
+        ObjectMapper mapper = new ObjectMapper();
         RecordReaderFactory readerFactory = context.getProperty(RECORD_READER_FACTORY).asControllerService(RecordReaderFactory.class);
-        RecordSetWriterFactory writerFactory = context.getProperty(RECORD_WRITER_FACTORY).asControllerService(RecordSetWriterFactory.class);
-
         try (final InputStream in = session.read(flowFile);
-             final ByteArrayOutputStream out = new ByteArrayOutputStream(1000);
-             final RecordReader reader = readerFactory.createRecordReader(flowFile, in, getLogger());
-             final RecordSetWriter writer = writerFactory.createWriter(getLogger(), reader.getSchema(), out, flowFile)) {
-            writer.beginRecordSet();
+             final RecordReader reader = readerFactory.createRecordReader(flowFile, in, getLogger())) {
+
+            int count = 0;
             Record record;
-            while ((record = reader.nextRecord()) != null) {
-                writer.write(record);
-                salesforceRestService.postRecord(objectType, out.toByteArray());
-                out.reset();
+            ArrayNode records = mapper.createArrayNode();
+            while ((record = reader.nextRecord()) != null && count++ <= 200) {
+                final String serializedRecord = record.getSerializedForm()
+                        .map(SerializedForm::getSerialized)
+                        .map(Supplier.class::cast)
+                        .map(Supplier::get)
+                        .map(String.class::cast)
+                        .orElse(null);
+
+                final JsonNode jsonNode = mapper.readTree(serializedRecord);
+                ObjectNode attributes = mapper.createObjectNode();
+                attributes.put("type", objectType);
+                attributes.put("referenceId", String.valueOf(count));
+
+                ((ObjectNode) jsonNode).set("attributes", attributes);
+                records.add(jsonNode);
+
+                if (count == 200) {
+                    final ObjectNode root = mapper.createObjectNode();
+                    root.set("records", records);
+                    salesforceRestService.postRecord(objectType, root.toString());
+                    records = mapper.createArrayNode();
+                }
             }
-            writer.finishRecordSet();
+
+            final ObjectNode root = mapper.createObjectNode();
+            root.set("records", records);
+
+            salesforceRestService.postRecord(objectType, root.toString());
         } catch (Exception ex) {
             getLogger().error("Failed to put records to Salesforce.", ex);
         }
+
+        session.transfer(flowFile, REL_SUCCESS);
     }
 }
