@@ -95,7 +95,6 @@ public class SalesforceRestService {
                 .build();
 
         final RequestBody requestBody = RequestBody.create(body, MediaType.parse("application/json"));
-        requestBody.writeTo();
 
         Request request = new Request.Builder()
                 .addHeader("Authorization", "Bearer " + accessTokenProvider.get())
