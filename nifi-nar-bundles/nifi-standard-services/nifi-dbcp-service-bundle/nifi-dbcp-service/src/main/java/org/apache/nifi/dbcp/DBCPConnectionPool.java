@@ -27,6 +27,7 @@ import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.components.ValidationContext;
 import org.apache.nifi.components.ValidationResult;
+import org.apache.nifi.controller.ConfigurationContext;
 import org.apache.nifi.controller.VerifiableControllerService;
 import org.apache.nifi.expression.ExpressionLanguageScope;
 import org.apache.nifi.kerberos.KerberosCredentialsService;
@@ -139,6 +140,10 @@ public class DBCPConnectionPool extends AbstractDBCPConnectionPool implements DB
         }
 
         return results;
+    }
+
+    @Override
+    protected void downloadDriver(ConfigurationContext context) {
     }
 
     BasicDataSource getDataSource() {
