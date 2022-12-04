@@ -170,6 +170,11 @@ public class SnowflakeComputingConnectionPool extends AbstractDBCPConnectionPool
     }
 
     @Override
+    protected void downloadDriver(ConfigurationContext context) {
+
+    }
+
+    @Override
     protected String getUrl(final ConfigurationContext context) {
         final ConnectionUrlFormat connectionUrlFormat = ConnectionUrlFormat.forName(context.getProperty(CONNECTION_URL_FORMAT)
                 .getValue());
