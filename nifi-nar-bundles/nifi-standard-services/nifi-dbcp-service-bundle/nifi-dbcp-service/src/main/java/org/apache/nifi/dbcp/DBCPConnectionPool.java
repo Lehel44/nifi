@@ -142,10 +142,6 @@ public class DBCPConnectionPool extends AbstractDBCPConnectionPool implements DB
         return results;
     }
 
-    @Override
-    protected void downloadDriver(ConfigurationContext context) {
-    }
-
     BasicDataSource getDataSource() {
         return dataSource;
     }

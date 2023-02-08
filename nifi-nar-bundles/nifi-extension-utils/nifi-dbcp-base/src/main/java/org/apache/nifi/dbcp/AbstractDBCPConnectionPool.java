@@ -18,7 +18,6 @@ package org.apache.nifi.dbcp;
 
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.apache.nifi.annotation.lifecycle.OnDisabled;
 import org.apache.nifi.annotation.lifecycle.OnEnabled;
 import org.apache.nifi.components.ConfigVerificationResult;
@@ -42,7 +41,6 @@ import org.apache.nifi.security.krb.KerberosKeytabUser;
 import org.apache.nifi.security.krb.KerberosLoginException;
 import org.apache.nifi.security.krb.KerberosPasswordUser;
 import org.apache.nifi.security.krb.KerberosUser;
-import org.apache.nifi.util.FormatUtils;
 
 import java.sql.Connection;
 import java.sql.Driver;
@@ -52,50 +50,24 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.apache.nifi.components.ConfigVerificationResult.Outcome.FAILED;
 import static org.apache.nifi.components.ConfigVerificationResult.Outcome.SUCCESSFUL;
+import static org.apache.nifi.dbcp.BasicDataSourceConfiguration.DEFAULT_EVICTION_RUN_PERIOD;
+import static org.apache.nifi.dbcp.BasicDataSourceConfiguration.DEFAULT_MAX_CONN_LIFETIME;
+import static org.apache.nifi.dbcp.BasicDataSourceConfiguration.DEFAULT_MAX_IDLE;
+import static org.apache.nifi.dbcp.BasicDataSourceConfiguration.DEFAULT_MAX_TOTAL_CONNECTIONS;
+import static org.apache.nifi.dbcp.BasicDataSourceConfiguration.DEFAULT_MAX_WAIT_MILLIS;
+import static org.apache.nifi.dbcp.BasicDataSourceConfiguration.DEFAULT_MIN_EVICTABLE_IDLE_TIME_MINS;
+import static org.apache.nifi.dbcp.BasicDataSourceConfiguration.DEFAULT_MIN_IDLE;
+import static org.apache.nifi.dbcp.BasicDataSourceConfiguration.DEFAULT_SOFT_MIN_EVICTABLE_IDLE_TIME;
 
 /**
  * Abstract base class for Database Connection Pooling Services using Apache Commons DBCP as the underlying connection pool implementation.
- *
  */
 public abstract class AbstractDBCPConnectionPool extends AbstractControllerService implements DBCPService, VerifiableControllerService {
-    /** Property Name Prefix for Sensitive Dynamic Properties */
     protected static final String SENSITIVE_PROPERTY_PREFIX = "SENSITIVE.";
-
-    /**
-     * Copied from {@link GenericObjectPoolConfig#DEFAULT_MIN_IDLE} in Commons-DBCP 2.7.0
-     */
-    private static final String DEFAULT_MIN_IDLE = "0";
-    /**
-     * Copied from {@link GenericObjectPoolConfig#DEFAULT_MAX_IDLE} in Commons-DBCP 2.7.0
-     */
-    private static final String DEFAULT_MAX_TOTAL_CONNECTIONS = "8";
-
-    private static final String DEFAULT_MAX_IDLE = DEFAULT_MAX_TOTAL_CONNECTIONS;
-    /**
-     * Copied from private variable {@link BasicDataSource#maxConnLifetimeMillis} in Commons-DBCP 2.7.0
-     */
-    private static final String DEFAULT_MAX_CONN_LIFETIME = "-1";
-    /**
-     * Copied from {@link GenericObjectPoolConfig#DEFAULT_TIME_BETWEEN_EVICTION_RUNS_MILLIS} in Commons-DBCP 2.7.0
-     */
-    private static final String DEFAULT_EVICTION_RUN_PERIOD = String.valueOf(-1L);
-    /**
-     * Copied from {@link GenericObjectPoolConfig#DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS} in Commons-DBCP 2.7.0
-     * and converted from 1800000L to "1800000 millis" to "30 mins"
-     */
-    protected static final String DEFAULT_MIN_EVICTABLE_IDLE_TIME_MINS = "30 mins";
-    /**
-     * Copied from {@link GenericObjectPoolConfig#DEFAULT_SOFT_MIN_EVICTABLE_IDLE_TIME_MILLIS} in Commons-DBCP 2.7.0
-     */
-    private static final String DEFAULT_SOFT_MIN_EVICTABLE_IDLE_TIME = String.valueOf(-1L);
-    private static final String DEFAULT_MAX_WAIT_MILLIS = "500 millis";
-
-
     public static final PropertyDescriptor DATABASE_URL = new PropertyDescriptor.Builder()
             .name("Database Connection URL")
             .description("A database connection URL used to connect to a database. May contain database system name, host, port, database name and some parameters."
@@ -329,7 +301,7 @@ public abstract class AbstractDBCPConnectionPool extends AbstractControllerServi
 
         final BasicDataSource dataSource = new BasicDataSource();
         try {
-            configureDataSource(dataSource, kerberosUser, context);
+            configureDataSource(kerberosUser, context);
             results.add(new ConfigVerificationResult.Builder()
                     .verificationStepName("Configure Data Source")
                     .outcome(SUCCESSFUL)
@@ -382,83 +354,17 @@ public abstract class AbstractDBCPConnectionPool extends AbstractControllerServi
      * made since the underlying system may still go off-line during normal
      * operation of the connection pool.
      *
-     * @param context
-     *            the configuration context
-     * @throws InitializationException
-     *             if unable to create a database connection
+     * @param context the configuration context
+     * @throws InitializationException if unable to create a database connection
      */
     @OnEnabled
     public void onConfigured(final ConfigurationContext context) throws InitializationException {
         kerberosUser = getKerberosUser(context);
         dataSource = new BasicDataSource();
-        configureDataSource(dataSource, kerberosUser, context);
+        configureDataSource(kerberosUser, context);
     }
 
-    protected void configureDataSource(final BasicDataSource dataSource, final KerberosUser kerberosUser,
-                                     final ConfigurationContext context) throws InitializationException {
-        final String dburl = getUrl(context);
-
-        final String driverName = context.getProperty(DB_DRIVERNAME).evaluateAttributeExpressions().getValue();
-        final String user = context.getProperty(DB_USER).evaluateAttributeExpressions().getValue();
-        final String passw = context.getProperty(DB_PASSWORD).evaluateAttributeExpressions().getValue();
-        final String validationQuery = context.getProperty(VALIDATION_QUERY).evaluateAttributeExpressions().getValue();
-
-        final Integer maxTotal;
-        if (context.getProperty(MAX_TOTAL_CONNECTIONS).evaluateAttributeExpressions().isSet()) {
-            maxTotal = context.getProperty(MAX_TOTAL_CONNECTIONS).evaluateAttributeExpressions().asInteger();
-        } else {
-            maxTotal = Integer.parseInt(DEFAULT_MAX_TOTAL_CONNECTIONS);
-        }
-
-        final Long maxWaitMillis;
-        if (context.getProperty(MAX_WAIT_TIME).evaluateAttributeExpressions().isSet()) {
-            maxWaitMillis = extractMillisWithInfinite(context.getProperty(MAX_WAIT_TIME).evaluateAttributeExpressions());
-        } else {
-            maxWaitMillis = (long) FormatUtils.getPreciseTimeDuration(DEFAULT_MAX_WAIT_MILLIS, TimeUnit.MILLISECONDS);
-        }
-
-        final Integer minIdle;
-        if(context.getProperty(MIN_IDLE).evaluateAttributeExpressions().isSet()) {
-            minIdle = context.getProperty(MIN_IDLE).evaluateAttributeExpressions().asInteger();
-        } else {
-            minIdle = Integer.parseInt(DEFAULT_MIN_IDLE);
-        }
-
-        final Integer maxIdle;
-        if (context.getProperty(MAX_IDLE).evaluateAttributeExpressions().isSet()) {
-            maxIdle = context.getProperty(MAX_IDLE).evaluateAttributeExpressions().asInteger();
-        } else {
-            maxIdle = Integer.parseInt(DEFAULT_MAX_IDLE);
-        }
-
-        final Long maxConnLifetimeMillis;
-        if (context.getProperty(MAX_CONN_LIFETIME).evaluateAttributeExpressions().isSet()) {
-            maxConnLifetimeMillis = extractMillisWithInfinite(context.getProperty(MAX_CONN_LIFETIME).evaluateAttributeExpressions());
-        } else {
-            maxConnLifetimeMillis = Long.parseLong(DEFAULT_MAX_CONN_LIFETIME);
-        }
-
-        final Long timeBetweenEvictionRunsMillis;
-        if (context.getProperty(EVICTION_RUN_PERIOD).evaluateAttributeExpressions().isSet()) {
-            timeBetweenEvictionRunsMillis = extractMillisWithInfinite(context.getProperty(EVICTION_RUN_PERIOD).evaluateAttributeExpressions());
-        } else {
-            timeBetweenEvictionRunsMillis = Long.parseLong(DEFAULT_EVICTION_RUN_PERIOD);
-        }
-
-
-        final Long minEvictableIdleTimeMillis;
-        if (context.getProperty(MIN_EVICTABLE_IDLE_TIME).evaluateAttributeExpressions().isSet()) {
-            minEvictableIdleTimeMillis = extractMillisWithInfinite(context.getProperty(MIN_EVICTABLE_IDLE_TIME));
-        } else {
-            minEvictableIdleTimeMillis = (long) FormatUtils.getPreciseTimeDuration(DEFAULT_MIN_EVICTABLE_IDLE_TIME_MINS, TimeUnit.MINUTES);
-        }
-
-        final Long softMinEvictableIdleTimeMillis;
-        if (context.getProperty(SOFT_MIN_EVICTABLE_IDLE_TIME).evaluateAttributeExpressions().isSet()) {
-            softMinEvictableIdleTimeMillis = extractMillisWithInfinite(context.getProperty(SOFT_MIN_EVICTABLE_IDLE_TIME).evaluateAttributeExpressions());
-        } else {
-            softMinEvictableIdleTimeMillis = Long.parseLong(DEFAULT_SOFT_MIN_EVICTABLE_IDLE_TIME);
-        }
+    protected void configureDataSource(final KerberosUser kerberosUser, final ConfigurationContext context) throws InitializationException {
 
         if (kerberosUser != null) {
             try {
@@ -468,24 +374,22 @@ public abstract class AbstractDBCPConnectionPool extends AbstractControllerServi
             }
         }
 
-        dataSource.setDriver(getDriver(driverName, dburl));
-        dataSource.setMaxWaitMillis(maxWaitMillis);
-        dataSource.setMaxTotal(maxTotal);
-        dataSource.setMinIdle(minIdle);
-        dataSource.setMaxIdle(maxIdle);
-        dataSource.setMaxConnLifetimeMillis(maxConnLifetimeMillis);
-        dataSource.setTimeBetweenEvictionRunsMillis(timeBetweenEvictionRunsMillis);
-        dataSource.setMinEvictableIdleTimeMillis(minEvictableIdleTimeMillis);
-        dataSource.setSoftMinEvictableIdleTimeMillis(softMinEvictableIdleTimeMillis);
+        final String dbUrl = getUrl(context);
+        final String driverName = context.getProperty(DB_DRIVERNAME).evaluateAttributeExpressions().getValue();
+        final Driver driver = getDriver(driverName, dbUrl);
 
-        if (validationQuery != null && !validationQuery.isEmpty()) {
-            dataSource.setValidationQuery(validationQuery);
-            dataSource.setTestOnBorrow(true);
-        }
+        final String userName = context.getProperty(DB_USER).evaluateAttributeExpressions().getValue();
+        final String password = context.getProperty(DB_PASSWORD).evaluateAttributeExpressions().getValue();
+        final String validationQuery = context.getProperty(VALIDATION_QUERY).evaluateAttributeExpressions().getValue();
 
-        dataSource.setUrl(dburl);
-        dataSource.setUsername(user);
-        dataSource.setPassword(passw);
+        final PropertyValue maxTotal = context.getProperty(MAX_TOTAL_CONNECTIONS);
+        final PropertyValue maxWaitMillis = context.getProperty(MAX_WAIT_TIME);
+        final PropertyValue minIdle = context.getProperty(MIN_IDLE);
+        final PropertyValue maxIdle = context.getProperty(MAX_IDLE);
+        final PropertyValue maxConnLifetimeMillis = context.getProperty(MAX_CONN_LIFETIME);
+        final PropertyValue timeBetweenEvictionRunsMillis = context.getProperty(EVICTION_RUN_PERIOD);
+        final PropertyValue minEvictableIdleTimeMillis = context.getProperty(MIN_EVICTABLE_IDLE_TIME);
+        final PropertyValue softMinEvictableIdleTimeMillis = context.getProperty(SOFT_MIN_EVICTABLE_IDLE_TIME);
 
         final List<PropertyDescriptor> dynamicProperties = context.getProperties()
                 .keySet()
@@ -493,7 +397,44 @@ public abstract class AbstractDBCPConnectionPool extends AbstractControllerServi
                 .filter(PropertyDescriptor::isDynamic)
                 .collect(Collectors.toList());
 
-        dynamicProperties.forEach(descriptor -> {
+        final BasicDataSourceConfiguration basicDataSourceConfiguration = new BasicDataSourceConfiguration.Builder(dbUrl, driver, userName, password)
+                .maxTotal(maxTotal)
+                .maxWaitMillis(maxWaitMillis)
+                .minIdle(minIdle)
+                .maxIdle(maxIdle)
+                .maxConnLifetimeMillis(maxConnLifetimeMillis)
+                .timeBetweenEvictionRunsMillis(timeBetweenEvictionRunsMillis)
+                .minEvictableIdleTimeMillis(minEvictableIdleTimeMillis)
+                .softMinEvictableIdleTimeMillis(softMinEvictableIdleTimeMillis)
+                .validationQuery(validationQuery)
+                .dynamicProperties(dynamicProperties)
+                .build();
+
+        configureDataSourceFromConfiguration(context, dataSource, basicDataSourceConfiguration);
+    }
+
+    private void configureDataSourceFromConfiguration(final ConfigurationContext context, final BasicDataSource dataSource, final BasicDataSourceConfiguration configuration) {
+        dataSource.setDriver(configuration.getDriver());
+        dataSource.setMaxWaitMillis(configuration.getMaxWaitMillis());
+        dataSource.setMaxTotal(configuration.getMaxTotal());
+        dataSource.setMinIdle(configuration.getMinIdle());
+        dataSource.setMaxIdle(configuration.getMaxIdle());
+        dataSource.setMaxConnLifetimeMillis(configuration.getMaxConnLifetimeMillis());
+        dataSource.setTimeBetweenEvictionRunsMillis(configuration.getTimeBetweenEvictionRunsMillis());
+        dataSource.setMinEvictableIdleTimeMillis(configuration.getMinEvictableIdleTimeMillis());
+        dataSource.setSoftMinEvictableIdleTimeMillis(configuration.getSoftMinEvictableIdleTimeMillis());
+
+        final String validationQuery = configuration.getValidationQuery();
+        if (StringUtils.isNotBlank(validationQuery)) {
+            dataSource.setValidationQuery(validationQuery);
+            dataSource.setTestOnBorrow(true);
+        }
+
+        dataSource.setUrl(configuration.getUrl());
+        dataSource.setUsername(configuration.getUserName());
+        dataSource.setPassword(configuration.getPassword());
+
+        configuration.getDynamicProperties().forEach(descriptor -> {
             final PropertyValue propertyValue = context.getProperty(descriptor);
             if (descriptor.isSensitive()) {
                 final String propertyName = StringUtils.substringAfter(descriptor.getName(), SENSITIVE_PROPERTY_PREFIX);
@@ -506,7 +447,7 @@ public abstract class AbstractDBCPConnectionPool extends AbstractControllerServi
         getConnectionProperties(context).forEach(dataSource::addConnectionProperty);
     }
 
-     protected KerberosUser getKerberosUser(final ConfigurationContext context) {
+    protected KerberosUser getKerberosUser(final ConfigurationContext context) {
         KerberosUser kerberosUser = null;
         final KerberosCredentialsService kerberosCredentialsService = context.getProperty(KERBEROS_CREDENTIALS_SERVICE).asControllerService(KerberosCredentialsService.class);
         final KerberosUserService kerberosUserService = context.getProperty(KERBEROS_USER_SERVICE).asControllerService(KerberosUserService.class);
@@ -533,7 +474,7 @@ public abstract class AbstractDBCPConnectionPool extends AbstractControllerServi
         try {
             clazz = Class.forName(driverName);
         } catch (final ClassNotFoundException e) {
-            throw new ProcessException("Driver class " + driverName +  " is not found", e);
+            throw new ProcessException("Driver class " + driverName + " is not found", e);
         }
 
         try {
@@ -559,10 +500,6 @@ public abstract class AbstractDBCPConnectionPool extends AbstractControllerServi
      */
     protected Map<String, String> getConnectionProperties(final ConfigurationContext context) {
         return new HashMap<>();
-    }
-
-    protected Long extractMillisWithInfinite(PropertyValue prop) {
-        return "-1".equals(prop.getValue()) ? -1 : prop.asTimePeriod(TimeUnit.MILLISECONDS);
     }
 
     /**
