@@ -22,6 +22,8 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.camel.component.salesforce.api.dto.SObjectField;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.annotation.behavior.InputRequirement;
 import org.apache.nifi.annotation.behavior.InputRequirement.Requirement;
 import org.apache.nifi.annotation.behavior.Stateful;
@@ -86,6 +88,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiPredicate;
+import java.util.stream.Collectors;
 
 import static org.apache.nifi.processors.salesforce.util.CommonSalesforceProperties.READ_TIMEOUT;
 import static org.apache.nifi.processors.salesforce.util.CommonSalesforceProperties.TOKEN_PROVIDER;
@@ -113,6 +116,9 @@ public class QuerySalesforceObject extends AbstractProcessor {
 
     static final AllowableValue PROPERTY_BASED_QUERY = new AllowableValue("property-based-query", "Property Based Query", "Provide query by properties.");
     static final AllowableValue CUSTOM_QUERY = new AllowableValue("custom-query", "Custom Query", "Provide custom SOQL query.");
+
+    static final AllowableValue ALL_FIELDS = new AllowableValue("all-fields", "All Fields", "Query all fields.");
+    static final AllowableValue FIELDS_LIST = new AllowableValue("fields-list", "Fields List", "Query fields specified in the list separated by commas.");
 
     static final PropertyDescriptor API_URL = new PropertyDescriptor.Builder()
             .name("salesforce-url")
@@ -162,6 +168,15 @@ public class QuerySalesforceObject extends AbstractProcessor {
             .dependsOn(QUERY_TYPE, PROPERTY_BASED_QUERY)
             .build();
 
+    static final PropertyDescriptor SELECT_FIELDS = new PropertyDescriptor.Builder()
+            .name("select-fields")
+            .displayName("Select Fields")
+            .description("Select all fields or only the specified ones.")
+            .required(true)
+            .defaultValue(FIELDS_LIST.getValue())
+            .allowableValues(ALL_FIELDS, FIELDS_LIST)
+            .build();
+
     static final PropertyDescriptor FIELD_NAMES = new PropertyDescriptor.Builder()
             .name("field-names")
             .displayName("Field Names")
@@ -170,6 +185,7 @@ public class QuerySalesforceObject extends AbstractProcessor {
             .expressionLanguageSupported(ExpressionLanguageScope.VARIABLE_REGISTRY)
             .addValidator(StandardValidators.NON_BLANK_VALIDATOR)
             .dependsOn(QUERY_TYPE, PROPERTY_BASED_QUERY)
+            .dependsOn(SELECT_FIELDS, FIELDS_LIST)
             .build();
 
     static final PropertyDescriptor RECORD_WRITER = new PropertyDescriptor.Builder()
@@ -285,6 +301,7 @@ public class QuerySalesforceObject extends AbstractProcessor {
                 QUERY_TYPE,
                 CUSTOM_SOQL_QUERY,
                 SOBJECT_NAME,
+                SELECT_FIELDS,
                 FIELD_NAMES,
                 READ_TIMEOUT,
                 TOKEN_PROVIDER,
@@ -339,7 +356,9 @@ public class QuerySalesforceObject extends AbstractProcessor {
 
     private void processQuery(ProcessContext context, ProcessSession session, AtomicReference<String> nextRecordsUrl) {
         String sObject = context.getProperty(SOBJECT_NAME).getValue();
-        String fields = context.getProperty(FIELD_NAMES).getValue();
+        String selectFields = context.getProperty(SELECT_FIELDS).getValue();
+        boolean isAllFields = selectFields.equals(ALL_FIELDS.getValue());
+        String fields = isAllFields ? StringUtils.EMPTY : context.getProperty(FIELD_NAMES).getValue();
         String customWhereClause = context.getProperty(CUSTOM_WHERE_CONDITION).getValue();
         RecordSetWriterFactory writerFactory = context.getProperty(RECORD_WRITER).asControllerService(RecordSetWriterFactory.class);
         boolean createZeroRecordFlowFiles = context.getProperty(CREATE_ZERO_RECORD_FILES).asBoolean();
@@ -371,10 +390,11 @@ public class QuerySalesforceObject extends AbstractProcessor {
         }
 
         ConvertedSalesforceSchema convertedSalesforceSchema = getConvertedSalesforceSchema(sObject, fields);
+        final List<String> fieldsNames = convertedSalesforceSchema.getFields().stream().map(SObjectField::getName).collect(Collectors.toList());
 
         String querySObject = buildQuery(
                 sObject,
-                fields,
+                String.join(",", fieldsNames),
                 customWhereClause,
                 ageField,
                 initialAgeFilter,
@@ -538,9 +558,9 @@ public class QuerySalesforceObject extends AbstractProcessor {
 
     protected ConvertedSalesforceSchema convertSchema(InputStream describeSObjectResult, String fields) {
         try {
-            RecordSchema recordSchema = salesForceToRecordSchemaConverter.convertSchema(describeSObjectResult, fields);
-
-            RecordSchema querySObjectResultSchema = new SimpleRecordSchema(Collections.singletonList(
+            final SalesforceToRecordSchemaConverter.RecordSchemaWithFields recordSchemaWithFields = salesForceToRecordSchemaConverter.convertSchema(describeSObjectResult, fields);
+            RecordSchema recordSchema = recordSchemaWithFields.getSchema();
+                    RecordSchema querySObjectResultSchema = new SimpleRecordSchema(Collections.singletonList(
                     new RecordField(STARTING_FIELD_NAME, RecordFieldType.ARRAY.getArrayDataType(
                             RecordFieldType.RECORD.getRecordDataType(
                                     recordSchema
@@ -548,7 +568,7 @@ public class QuerySalesforceObject extends AbstractProcessor {
                     ))
             ));
 
-            return new ConvertedSalesforceSchema(querySObjectResultSchema, recordSchema);
+            return new ConvertedSalesforceSchema(querySObjectResultSchema, recordSchema, recordSchemaWithFields.getFields());
         } catch (IOException e) {
             throw new ProcessException("SObject to Record schema conversion failed", e);
         }
@@ -605,10 +625,17 @@ public class QuerySalesforceObject extends AbstractProcessor {
     static class ConvertedSalesforceSchema {
         RecordSchema querySObjectResultSchema;
         RecordSchema recordSchema;
+        List<SObjectField> fields;
 
-        public ConvertedSalesforceSchema(RecordSchema querySObjectResultSchema, RecordSchema recordSchema) {
+        public ConvertedSalesforceSchema(RecordSchema querySObjectResultSchema, RecordSchema recordSchema, List<SObjectField> fields) {
             this.querySObjectResultSchema = querySObjectResultSchema;
             this.recordSchema = recordSchema;
+            this.fields = fields;
+        }
+
+
+        public List<SObjectField> getFields() {
+            return fields;
         }
     }
 }

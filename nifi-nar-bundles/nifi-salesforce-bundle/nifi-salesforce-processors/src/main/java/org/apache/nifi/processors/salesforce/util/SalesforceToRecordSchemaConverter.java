@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.camel.component.salesforce.api.dto.SObjectDescription;
 import org.apache.camel.component.salesforce.api.dto.SObjectField;
 import org.apache.camel.component.salesforce.api.utils.JsonUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.serialization.SimpleRecordSchema;
 import org.apache.nifi.serialization.record.RecordField;
 import org.apache.nifi.serialization.record.RecordFieldType;
@@ -46,14 +47,19 @@ public class SalesforceToRecordSchemaConverter {
         objectMapper = JsonUtils.createObjectMapper();
     }
 
-    public RecordSchema convertSchema(final InputStream describeSOjbectResultJsonString, final String fieldNamesOfInterest) throws IOException {
+    public RecordSchemaWithFields convertSchema(final InputStream describeSOjbectResultJsonString, final String fieldNamesOfInterest) throws IOException {
 
         final SObjectDescription sObjectDescription = objectMapper.readValue(describeSOjbectResultJsonString, SObjectDescription.class);
         final List<String> listOfFieldNamesOfInterest = Arrays.asList(fieldNamesOfInterest.toLowerCase().split("\\s*,\\s*"));
-        final List<SObjectField> fields = sObjectDescription.getFields()
-                .stream()
-                .filter(sObjectField -> listOfFieldNamesOfInterest.contains(sObjectField.getName().toLowerCase()))
-                .collect(Collectors.toList());
+        List<SObjectField> fields = sObjectDescription.getFields();
+
+        if (StringUtils.isNotBlank(fieldNamesOfInterest)) {
+            fields = fields
+                    .stream()
+                    .filter(sObjectField -> listOfFieldNamesOfInterest.contains(sObjectField.getName().toLowerCase()))
+                    .collect(Collectors.toList());
+        }
+
 
         final List<RecordField> recordFields = new ArrayList<>();
 
@@ -115,6 +121,25 @@ public class SalesforceToRecordSchemaConverter {
             }
         }
 
-        return new SimpleRecordSchema(recordFields);
+        final SimpleRecordSchema simpleRecordSchema = new SimpleRecordSchema(recordFields);
+        return new RecordSchemaWithFields(simpleRecordSchema, fields);
+    }
+
+    public static class RecordSchemaWithFields {
+        private final RecordSchema schema;
+        private final List<SObjectField> fields;
+
+        public RecordSchemaWithFields(RecordSchema schema, List<SObjectField> fields) {
+            this.schema = schema;
+            this.fields = fields;
+        }
+
+        public RecordSchema getSchema() {
+            return schema;
+        }
+
+        public List<SObjectField> getFields() {
+            return fields;
+        }
     }
 }
