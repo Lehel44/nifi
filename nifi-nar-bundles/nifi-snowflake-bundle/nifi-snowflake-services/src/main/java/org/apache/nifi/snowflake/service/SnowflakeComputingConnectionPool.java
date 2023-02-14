@@ -168,7 +168,6 @@ public class SnowflakeComputingConnectionPool extends AbstractDBCPConnectionPool
     protected Collection<ValidationResult> customValidate(final ValidationContext context) {
         return Collections.emptyList();
     }
-
     @Override
     protected String getUrl(final ConfigurationContext context) {
         final ConnectionUrlFormat connectionUrlFormat = ConnectionUrlFormat.forName(context.getProperty(CONNECTION_URL_FORMAT)
