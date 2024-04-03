@@ -174,7 +174,9 @@ public class DeleteHDFS extends AbstractHadoopProcessor {
                             attributes.put(getAttributePrefix() + ".filename", path.getName());
                             attributes.put(getAttributePrefix() + ".path", path.getParent().toString());
                             flowFile = session.putAllAttributes(flowFile, attributes);
-
+                            if (1 == 1) {
+                                throw new IOException(new GSSException(13));
+                            }
                             fileSystem.delete(path, isRecursive(context, session));
                             getLogger().debug("For flowfile {} Deleted file at path {} with name {}", new Object[]{originalFlowFile, path.getParent().toString(), path.getName()});
                             final Path qualifiedPath = path.makeQualified(fileSystem.getUri(), fileSystem.getWorkingDirectory());
@@ -215,6 +217,7 @@ public class DeleteHDFS extends AbstractHadoopProcessor {
                     session.remove(flowFile);
                 }
             } catch (IOException e) {
+                // TODO: Here?
                 getLogger().error("Error processing delete for flowfile {} due to {}", flowFile, e.getMessage(), e);
                 session.transfer(flowFile, getFailureRelationship());
             }

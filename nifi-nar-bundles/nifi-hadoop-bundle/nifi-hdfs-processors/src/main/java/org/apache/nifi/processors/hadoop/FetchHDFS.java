@@ -158,10 +158,14 @@ public class FetchHDFS extends AbstractHadoopProcessor {
             }
 
             FlowFile flowFile1 = finalFlowFile;
+            // TODO: Can this cause an issue?
             final Path qualifiedPath = path.makeQualified(hdfs.getUri(), hdfs.getWorkingDirectory());
             try {
                 final String outputFilename;
                 final String originalFilename = path.getName();
+                if (1 == 1) {
+                    throw new IOException(new GSSException(13));
+                }
                 stream = hdfs.open(path, 16384);
 
                 // Check if compression codec is defined (inferred or otherwise)

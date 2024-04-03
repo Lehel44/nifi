@@ -383,6 +383,9 @@ public class MoveHDFS extends AbstractHadoopProcessor {
                         final String originalFilename = file.getName();
                         final Path outputDirPath = getNormalizedPath(context, OUTPUT_DIRECTORY, parentFlowFile);
                         final Path newFile = new Path(outputDirPath, originalFilename);
+                        if (1 == 1) {
+                            throw new IOException(new GSSException(13));
+                        }
                         final boolean destinationExists = hdfs.exists(newFile);
                         // If destination file already exists, resolve that
                         // based on processor configuration
@@ -458,9 +461,24 @@ public class MoveHDFS extends AbstractHadoopProcessor {
                         session.transfer(flowFile, REL_SUCCESS);
 
                     } catch (final Throwable t) {
-                        getLogger().error("Failed to rename on HDFS due to {}", new Object[]{t});
-                        session.transfer(session.penalize(flowFile), REL_FAILURE);
-                        context.yield();
+                        // TODO: handle GSSException
+                        Optional<GSSException> causeOptional = findCause(t, GSSException.class, gsse -> GSSException.NO_CRED == gsse.getMajor());
+                        if (causeOptional.isPresent()) {
+                            getLogger().error("An error occurred while connecting to HDFS. "
+                                            + "Rolling back session, resetting HDFS resources, and penalizing flow file {}",
+                                    flowFile.getAttribute(CoreAttributes.UUID.key()), causeOptional.get());
+                            try {
+                                hdfsResources.set(resetHDFSResources(getConfigLocations(context), context));
+                            } catch (IOException ioe) {
+                                getLogger().error("An error occurred resetting HDFS resources, you may need to restart the processor.");
+                            }
+                            session.rollback();
+                            context.yield();
+                        } else {
+                            getLogger().error("Failed to rename on HDFS due to {}", new Object[]{t});
+                            session.transfer(session.penalize(flowFile), REL_FAILURE);
+                            context.yield();
+                        }
                     }
                     return null;
                 }

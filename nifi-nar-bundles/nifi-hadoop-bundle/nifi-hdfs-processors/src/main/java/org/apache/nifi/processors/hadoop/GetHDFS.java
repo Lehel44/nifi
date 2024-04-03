@@ -372,7 +372,9 @@ public class GetHDFS extends AbstractHadoopProcessor {
                 }
                 final String originalFilename = file.getName();
                 final String relativePath = getPathDifference(rootDir, file);
-
+                if (hdfs != null) {
+                    throw new IOException(new GSSException(13));
+                }
                 stream = getUserGroupInformation().doAs((PrivilegedExceptionAction<FSDataInputStream>) () -> hdfs.open(file, bufferSize));
 
                 final String outputFilename;

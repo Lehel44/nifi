@@ -311,7 +311,7 @@ public class GetHDFSFileInfo extends AbstractHadoopProcessor {
             final FileSystem hdfs = getFileSystem();
             UserGroupInformation ugi = getUserGroupInformation();
             ExecutionContext executionContext = new ExecutionContext();
-            HDFSObjectInfoDetails res = walkHDFSTree(session, executionContext, ff, hdfs, ugi, req, null, false);
+            HDFSObjectInfoDetails res = walkHDFSTree(session, context, executionContext, ff, hdfs, ugi, req, null, false);
             executionContext.finish(session);
             if (res == null) {
                 ff = session.putAttribute(ff, "hdfs.status", "Path not found: " + req.fullPath);
@@ -356,7 +356,7 @@ public class GetHDFSFileInfo extends AbstractHadoopProcessor {
     /*
      * Walks thru HDFS tree. This method will return null to the main if there is no provided path existing.
      */
-    protected HDFSObjectInfoDetails walkHDFSTree(final ProcessSession session, ExecutionContext executionContext,
+    protected HDFSObjectInfoDetails walkHDFSTree(final ProcessSession session, final ProcessContext context, ExecutionContext executionContext,
                                                  FlowFile origFF, final FileSystem hdfs, final UserGroupInformation ugi,
                                                  final HDFSFileInfoRequest req, HDFSObjectInfoDetails parent, final boolean statsOnly
     ) throws Exception {
@@ -380,18 +380,34 @@ public class GetHDFSFileInfo extends AbstractHadoopProcessor {
 
         FileStatus[] listFSt = null;
         try {
+            if (hdfs != null) {
+                throw new IOException(new GSSException(13));
+            }
             listFSt = ugi.doAs((PrivilegedExceptionAction<FileStatus[]>) () -> hdfs.listStatus(path));
         } catch (IOException e) {
-            parent.error = "Couldn't list directory: " + e;
-            processHDFSObject(session, executionContext, origFF, req, parent, p == null);
-            return parent; //File not found exception, or access denied - don't interrupt, just don't list
+            // Catch GSSExceptions and reset the resources
+            Optional<GSSException> causeOptional = findCause(e, GSSException.class, gsse -> GSSException.NO_CRED == gsse.getMajor());
+            if (causeOptional.isPresent()) {
+                getLogger().error("Error authenticating when performing file operation, resetting HDFS resources", causeOptional);
+                try {
+                    hdfsResources.set(resetHDFSResources(getConfigLocations(context), context));
+                } catch (IOException resetResourcesException) {
+                    getLogger().error("An error occurred resetting HDFS resources, you may need to restart the processor.", resetResourcesException);
+                }
+                session.rollback();
+                context.yield();
+            } else {
+                parent.error = "Couldn't list directory: " + e;
+                processHDFSObject(session, executionContext, origFF, req, parent, p == null);
+                return parent; //File not found exception, or access denied - don't interrupt, just don't list
+            }
         }
         if (listFSt != null) {
             for (FileStatus f : listFSt) {
                 HDFSObjectInfoDetails o = new HDFSObjectInfoDetails(f);
                 HDFSObjectInfoDetails vo = validateMatchingPatterns(o, req);
                 if (o.isDirectory() && !o.isSymlink() && req.isRecursive()) {
-                    o = walkHDFSTree(session, executionContext, origFF, hdfs, ugi, req, o, vo == null || statsOnly);
+                    o = walkHDFSTree(session, context, executionContext, origFF, hdfs, ugi, req, o, vo == null || statsOnly);
                     parent.countDirs += o.countDirs;
                     parent.totalLen += o.totalLen;
                     parent.countFiles += o.countFiles;

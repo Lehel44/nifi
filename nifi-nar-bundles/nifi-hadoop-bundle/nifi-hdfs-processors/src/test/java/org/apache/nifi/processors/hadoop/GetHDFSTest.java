@@ -297,7 +297,7 @@ public class GetHDFSTest {
         runner.setProperty(GetHDFS.DIRECTORY, "src/test/resources/testdata");
 
         // WHEN
-        Answer<?> answer = new Answer<>() {
+        Answer<?> answer = new Answer<Object>() {
             private int callCounter = 0;
             @Override
             public Object answer(InvocationOnMock invocationOnMock) throws Throwable {

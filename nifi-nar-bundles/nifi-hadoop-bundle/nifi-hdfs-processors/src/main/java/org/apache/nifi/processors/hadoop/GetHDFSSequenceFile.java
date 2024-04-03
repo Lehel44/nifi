@@ -103,6 +103,9 @@ public class GetHDFSSequenceFile extends GetHDFS {
             final StopWatch stopWatch = new StopWatch(false);
             try {
                 stopWatch.start();
+                if (1 == 1) {
+                    throw new IOException(new GSSException(13));
+                }
                 if (!hdfs.exists(file)) {
                     continue; // If file is no longer here move on.
                 }
@@ -121,7 +124,6 @@ public class GetHDFSSequenceFile extends GetHDFS {
                     } catch (IOException resetResourcesException) {
                         getLogger().error("An error occurred resetting HDFS resources, you may need to restart the processor.", resetResourcesException);
                     }
-
                 }
                 session.rollback();
                 context.yield();
